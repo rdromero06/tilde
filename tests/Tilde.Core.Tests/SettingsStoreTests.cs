@@ -19,6 +19,8 @@ public sealed class SettingsStoreTests : IDisposable
         Assert.Equal(NotchSize.Auto, store.Current.NotchSize);
         Assert.True(store.Current.HideInFullscreen);
         Assert.False(store.Current.MinimalNotch);
+        Assert.False(store.Current.LyricsInPill); // La píldora cerrada muestra la hora, no la letra.
+        Assert.True(store.Current.LyricsOnline);
     }
 
     [Fact]

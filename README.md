@@ -26,7 +26,7 @@ Mediciones (publicación AOT, Full HD):
 | Situación | Memoria privada | CPU |
 |---|---|---|
 | Reposo, sin música (fase 1) | 11,5 MB | 0 ms en 60 s |
-| Música sonando con la letra en la píldora (fase 2) | 22,9 MB | 78 ms en 60 s (0,13 % de un núcleo) |
+| Música sonando con la letra en la píldora (opcional, fase 2) | 22,9 MB | 78 ms en 60 s (0,13 % de un núcleo) |
 
 ## Requisitos para compilar
 
@@ -75,8 +75,9 @@ El instalador por usuario (sin permisos de administrador) llega en la fase 7. Ha
   hacer clic en el notch.
 - El botón de **bocadillo** cambia a la **vista de letras**: el notch se divide en dos, la línea
   actual se resalta y se centra, y un clic en cualquier línea salta a ese momento.
-- Con el notch cerrado, la **píldora muestra la línea que suena** junto a la carátula, y se
-  ensancha o estrecha con cada línea. Sin música (o en pausa) vuelve la hora.
+- Con el notch cerrado, la píldora muestra la hora. De forma opcional (`lyricsInPill: true`)
+  puede mostrar la línea que suena junto a la carátula, ensanchándose o estrechándose con cada
+  línea.
 - Las letras vienen de [LRCLIB](https://lrclib.net). **Solo se envían título, artista y
   duración**, y las respuestas se guardan en `%LOCALAPPDATA%\Tilde\lyrics` (con nombres de
   archivo cifrados por hash) para no repetir peticiones. Si una canción no tiene letra, se vuelve
@@ -92,7 +93,7 @@ El instalador por usuario (sin permisos de administrador) llega en la fase 7. Ha
   "hideInFullscreen": true,   // ocultar con apps a pantalla completa
   "mascotEnabled": true,
   "lyricsOnline": true,       // buscar letras en LRCLIB
-  "lyricsInPill": true,       // línea actual en la píldora cerrada
+  "lyricsInPill": false,      // línea actual de la letra en la píldora cerrada
   "lyricsView": false,        // la página de música abre en la vista de letras
   "lastPage": 0
 }

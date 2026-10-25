@@ -36,8 +36,11 @@ public sealed class AppSettings
     /// <summary>Buscar letras en LRCLIB (envía solo título, artista y duración).</summary>
     public bool LyricsOnline { get; set; } = true;
 
-    /// <summary>Con el notch cerrado, mostrar la línea actual de la letra en la píldora.</summary>
-    public bool LyricsInPill { get; set; } = true;
+    /// <summary>
+    /// Con el notch cerrado, mostrar la línea actual de la letra en la píldora. Desactivado por
+    /// defecto: la píldora cerrada muestra la hora y la letra se ve al abrir el notch.
+    /// </summary>
+    public bool LyricsInPill { get; set; }
 
     /// <summary>La página de música muestra la vista de letras (true) o el reproductor (false).</summary>
     public bool LyricsView { get; set; }
