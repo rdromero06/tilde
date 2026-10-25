@@ -23,6 +23,18 @@ internal sealed class Theme : IDisposable
         Tertiary = dc.CreateSolidColorBrush(new Color4(1f, 1f, 1f, 0.26f), null);
         Subtle = dc.CreateSolidColorBrush(new Color4(1f, 1f, 1f, 0.10f), null);
         Accent = dc.CreateSolidColorBrush(new Color4(0.96f, 0.73f, 0.44f, 1f), null);
+        Water = dc.CreateSolidColorBrush(new Color4(0.42f, 0.72f, 0.96f, 1f), null);
+        Mint = dc.CreateSolidColorBrush(new Color4(0.44f, 0.83f, 0.66f, 1f), null);
+        Raised = dc.CreateSolidColorBrush(new Color4(1f, 1f, 1f, 0.16f), null);
+        // Colores de las tareas: ámbar, coral, menta, cielo y lila.
+        TaskColors =
+        [
+            Accent,
+            dc.CreateSolidColorBrush(new Color4(0.95f, 0.52f, 0.42f, 1f), null),
+            Mint,
+            Water,
+            dc.CreateSolidColorBrush(new Color4(0.72f, 0.61f, 0.95f, 1f), null),
+        ];
 
         // Segoe UI Variable (Windows 11) o Segoe UI (Windows 10).
         var text = Text.ResolveFamily(DWrite, "Segoe UI Variable Text", "Segoe UI");
@@ -37,6 +49,8 @@ internal sealed class Theme : IDisposable
         TrackArtist = Text.Format(DWrite, text, 12.5f * F);
         Lyric = Text.Format(DWrite, display, 14f * F, FontWeight.SemiBold);
         Lyric.WordWrapping = WordWrapping.Wrap;
+        Countdown = Text.Format(DWrite, display, 19f * F, FontWeight.SemiBold);
+        Button = Text.Format(DWrite, text, 12f * F, FontWeight.SemiBold);
         Icons = new IconSet(device.D2DFactory);
     }
 
@@ -55,6 +69,15 @@ internal sealed class Theme : IDisposable
     public ID2D1SolidColorBrush Subtle { get; }
 
     public ID2D1SolidColorBrush Accent { get; }
+
+    public ID2D1SolidColorBrush Water { get; }
+
+    public ID2D1SolidColorBrush Mint { get; }
+
+    /// <summary>Fondo de botones al pasar el ratón (algo más claro que <see cref="Subtle"/>).</summary>
+    public ID2D1SolidColorBrush Raised { get; }
+
+    public ID2D1SolidColorBrush[] TaskColors { get; }
 
     public IDWriteTextFormat Clock { get; }
 
@@ -75,6 +98,12 @@ internal sealed class Theme : IDisposable
     /// <summary>Líneas de letra (con ajuste de línea).</summary>
     public IDWriteTextFormat Lyric { get; }
 
+    /// <summary>Cuenta atrás grande del Pomodoro.</summary>
+    public IDWriteTextFormat Countdown { get; }
+
+    /// <summary>Texto de los botones.</summary>
+    public IDWriteTextFormat Button { get; }
+
     public IconSet Icons { get; }
 
     public void Dispose()
@@ -85,6 +114,11 @@ internal sealed class Theme : IDisposable
         Tertiary.Dispose();
         Subtle.Dispose();
         Accent.Dispose();
+        Water.Dispose();
+        Mint.Dispose();
+        Raised.Dispose();
+        TaskColors[1].Dispose();
+        TaskColors[4].Dispose();
         Clock.Dispose();
         HeaderDate.Dispose();
         HeaderTime.Dispose();
@@ -94,6 +128,8 @@ internal sealed class Theme : IDisposable
         TrackTitle.Dispose();
         TrackArtist.Dispose();
         Lyric.Dispose();
+        Countdown.Dispose();
+        Button.Dispose();
         Icons.Dispose();
     }
 }

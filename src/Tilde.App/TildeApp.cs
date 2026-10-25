@@ -1,5 +1,7 @@
 using System.Diagnostics;
+using Tilde.App.Alerts;
 using Tilde.App.Music;
+using Tilde.App.Productivity;
 using Tilde.App.Notch;
 using Tilde.App.Pages;
 using Tilde.Core;
@@ -27,6 +29,10 @@ internal sealed class TildeApp : IDisposable
     private readonly SettingsStore _settings;
     private readonly GraphicsDevice _graphics;
     private readonly MusicController _music;
+    private readonly AlertCenter _alerts = new();
+    private readonly PomodoroService _pomodoro;
+    private readonly WaterService _water;
+    private readonly TasksService _tasks;
     private readonly NotchWindow _notch;
     private readonly TrayIcon _tray;
     private readonly nint _icon;
@@ -45,7 +51,16 @@ internal sealed class TildeApp : IDisposable
 
         _graphics = new GraphicsDevice();
         _music = new MusicController(_settings, _graphics, Version);
-        _notch = new NotchWindow(_graphics, _settings, PageCatalog.Create(_music, _settings), _music);
+        _pomodoro = new PomodoroService(_settings, _alerts);
+        _water = new WaterService(_settings, _alerts);
+        _tasks = new TasksService(_alerts);
+        var pages = PageCatalog.Create(_music, _settings, _pomodoro, _water, _tasks);
+        _notch = new NotchWindow(_graphics, _settings, pages, _music, _alerts, _pomodoro);
+        _notch.SettingsReloaded += () =>
+        {
+            _pomodoro.ApplySettings();
+            _water.ApplySettings();
+        };
         _notch.SettingsRequested += OpenSettings;
 
         // Cambios en settings.json hechos desde fuera: se aplican en el hilo de interfaz.
@@ -76,6 +91,9 @@ internal sealed class TildeApp : IDisposable
     {
         _tray.Dispose(); // Importante: si no, queda un icono «fantasma» en la bandeja.
         _notch.Dispose();
+        _pomodoro.Dispose();
+        _water.Dispose();
+        _tasks.Dispose();
         _music.Dispose();
         _graphics.Dispose();
         _settings.Dispose();

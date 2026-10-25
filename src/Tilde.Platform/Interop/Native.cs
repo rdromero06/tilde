@@ -145,6 +145,9 @@ public static unsafe partial class Native
     public const uint WM_DESTROY = 0x0002;
     public const uint WM_ACTIVATE = 0x0006;
     public const uint WM_CLOSE = 0x0010;
+    public const uint WM_SETFOCUS = 0x0007;
+    public const uint WM_KILLFOCUS = 0x0008;
+    public const uint WM_SETFONT = 0x0030;
     public const uint WM_SETTINGCHANGE = 0x001A;
     public const uint WM_TIMECHANGE = 0x001E;
     public const uint WM_SETCURSOR = 0x0020;
@@ -153,6 +156,12 @@ public static unsafe partial class Native
     public const uint WM_NCCREATE = 0x0081;
     public const uint WM_CONTEXTMENU = 0x007B;
     public const uint WM_KEYDOWN = 0x0100;
+    public const uint WM_CHAR = 0x0102;
+    public const uint WM_CTLCOLOREDIT = 0x0133;
+    public const uint EM_SETSEL = 0x00B1;
+    public const uint EM_SETMARGINS = 0x00D3;
+    public const uint EM_SETCUEBANNER = 0x1501;
+    public const uint EM_LIMITTEXT = 0x00C5;
     public const uint WM_TIMER = 0x0113;
     public const uint WM_MOUSEMOVE = 0x0200;
     public const uint WM_LBUTTONDOWN = 0x0201;
@@ -168,6 +177,9 @@ public static unsafe partial class Native
 
     // Estilos de ventana
     public const uint WS_POPUP = 0x80000000;
+    public const uint WS_CHILD = 0x40000000;
+    public const uint WS_VISIBLE = 0x10000000;
+    public const uint ES_AUTOHSCROLL = 0x0080;
     public const uint WS_EX_TOPMOST = 0x00000008;
     public const uint WS_EX_TOOLWINDOW = 0x00000080;
     public const uint WS_EX_NOREDIRECTIONBITMAP = 0x00200000;
@@ -188,6 +200,8 @@ public static unsafe partial class Native
     public const int MA_NOACTIVATE = 3;
     public const uint MONITOR_DEFAULTTOPRIMARY = 1;
     public const int VK_ESCAPE = 0x1B;
+    public const int VK_RETURN = 0x0D;
+    public const int VK_TAB = 0x09;
     public const int VK_LEFT = 0x25;
     public const int VK_RIGHT = 0x27;
     public const uint PBT_APMRESUMEAUTOMATIC = 0x0012;
@@ -222,6 +236,7 @@ public static unsafe partial class Native
     public const uint DWMWA_TRANSITIONS_FORCEDISABLED = 3;
     public const uint DWMWA_EXTENDED_FRAME_BOUNDS = 9;
     public const uint DWMWA_EXCLUDED_FROM_PEEK = 12;
+    public const uint DWMWA_WINDOW_CORNER_PREFERENCE = 33;
 
     // Configuración regional
     public const uint LOCALE_SMONTHDAY = 0x00000078;
@@ -399,7 +414,62 @@ public static unsafe partial class Native
     [LibraryImport("user32.dll")]
     public static partial int GetSystemMetricsForDpi(int index, uint dpi);
 
+    [LibraryImport("user32.dll")]
+    public static partial nint SendMessageW(nint hwnd, uint msg, nint wParam, nint lParam);
+
+    [LibraryImport("user32.dll", EntryPoint = "SendMessageW", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial nint SendMessageString(nint hwnd, uint msg, nint wParam, string lParam);
+
+    [LibraryImport("user32.dll")]
+    public static partial nint SetFocus(nint hwnd);
+
+    [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool SetWindowTextW(nint hwnd, string text);
+
+    [LibraryImport("user32.dll")]
+    public static partial int GetWindowTextW(nint hwnd, char* buffer, int maxCount);
+
+    [LibraryImport("user32.dll")]
+    public static partial int GetWindowTextLengthW(nint hwnd);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool MoveWindow(nint hwnd, int x, int y, int width, int height, [MarshalAs(UnmanagedType.Bool)] bool repaint);
+
+    // ── comctl32 (subclases) ──
+    [LibraryImport("comctl32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool SetWindowSubclass(nint hwnd, delegate* unmanaged<nint, uint, nint, nint, nuint, nuint, nint> proc, nuint id, nuint refData);
+
+    [LibraryImport("comctl32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool RemoveWindowSubclass(nint hwnd, delegate* unmanaged<nint, uint, nint, nint, nuint, nuint, nint> proc, nuint id);
+
+    [LibraryImport("comctl32.dll")]
+    public static partial nint DefSubclassProc(nint hwnd, uint msg, nint wParam, nint lParam);
+
+    // ── winmm ──
+    public const uint SND_ASYNC = 0x0001, SND_NODEFAULT = 0x0002, SND_MEMORY = 0x0004;
+
+    [LibraryImport("winmm.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool PlaySoundW(nint sound, nint module, uint flags);
+
     // ── gdi32 ──
+    [LibraryImport("gdi32.dll")]
+    public static partial nint CreateSolidBrush(uint color);
+
+    [LibraryImport("gdi32.dll")]
+    public static partial uint SetTextColor(nint hdc, uint color);
+
+    [LibraryImport("gdi32.dll")]
+    public static partial uint SetBkColor(nint hdc, uint color);
+
+    [LibraryImport("gdi32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial nint CreateFontW(int height, int width, int escapement, int orientation, int weight, uint italic,
+        uint underline, uint strikeOut, uint charSet, uint outPrecision, uint clipPrecision, uint quality, uint pitchAndFamily, string face);
+
     [LibraryImport("gdi32.dll")]
     public static partial nint CreateRectRgn(int left, int top, int right, int bottom);
 

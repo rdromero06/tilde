@@ -31,6 +31,47 @@ public static class Strings
     public static string LyricsUnavailable => T("Sin conexión con LRCLIB", "Can't reach LRCLIB");
     public static string LyricsDisabled => T("Búsqueda de letras desactivada", "Lyrics lookup is off");
 
+    // Pomodoro
+    public static string PomodoroFocus => T("Foco", "Focus");
+    public static string PomodoroShortBreak => T("Descanso corto", "Short break");
+    public static string PomodoroLongBreak => T("Descanso largo", "Long break");
+    public static string PomodoroStart => T("Empezar", "Start");
+    public static string PomodoroPause => T("Pausar", "Pause");
+    public static string PomodoroResume => T("Reanudar", "Resume");
+    public static string PomodoroSession(int n, int total) => T($"Sesión {n} de {total}", $"Session {n} of {total}");
+    public static string PomodoroToday(int n) => T(n == 1 ? "1 hoy" : $"{n} hoy", $"{n} today");
+    public static string PomodoroFocusDone => T("¡Sesión completada!", "Session complete!");
+    public static string PomodoroBreakRunning(int min) => T($"Descanso de {min} min en marcha", $"{min}-minute break started");
+    public static string PomodoroBreakReady(int min) => T($"Toca un descanso de {min} min", $"Time for a {min}-minute break");
+    public static string PomodoroBreakOver => T("Fin del descanso", "Break's over");
+    public static string PomodoroAnother(int min) => T($"¿Otra sesión de {min} min?", $"Another {min}-minute session?");
+    public static string PomodoroFocusRunning(int min) => T($"Sesión de {min} min en marcha", $"{min}-minute session started");
+    public static string PomodoroSkipBreak => T("Saltar descanso", "Skip break");
+    public static string PomodoroStartBreak => T("Empezar descanso", "Start break");
+    public static string Minutes(int n) => $"{n} min";
+
+    // Agua
+    public static string WaterOf(string goal, int percent) => T($"de {goal} · {percent} %", $"of {goal} · {percent}%");
+    public static string WaterDrink(string amount) => T($"Beber {amount}", $"Drink {amount}");
+    public static string WaterGlass(string amount) => T($"Vaso {amount}", $"Glass {amount}");
+    public static string WaterGoal(string amount) => T($"Meta {amount}", $"Goal {amount}");
+    public static string WaterToday => T("Hoy", "Today");
+    public static string WaterNext(string time) => T($"Aviso {time}", $"Reminder {time}");
+    public static string WaterGoalReached => T("¡Meta cumplida!", "Goal reached!");
+    public static string WaterReminderTitle => T("Hora de beber agua", "Time to drink water");
+    public static string WaterReminderMessage(string drunk, string goal) => T($"Llevas {drunk} de {goal} hoy", $"{drunk} of {goal} so far today");
+    public static string Later => T("Luego", "Later");
+    public static string DecimalSeparator => T(",", ".");
+
+    // Tareas
+    public static string TasksNew => T("Nueva tarea…", "New task…");
+    public static string TasksHint => T("Ej.: Llamar a Ana 18:30 · Pizza en 20 min", "e.g. Call Ana 6:30pm · Pizza in 20 min");
+    public static string TasksEmpty => T("Sin tareas pendientes", "Nothing to do");
+    public static string TasksTimeUp => T("¡Se acabó el tiempo!", "Time's up!");
+    public static string TasksSnooze(int min) => T($"Posponer {min} min", $"Snooze {min} min");
+    public static string TasksDone => T("Hecho", "Done");
+    public static string Tomorrow => T("mañana", "tomorrow");
+
     // Bandeja del sistema
     public static string TrayStartWithWindows => T("Iniciar con Windows", "Start with Windows");
     public static string TrayMascot => T("Mascota", "Mascot");

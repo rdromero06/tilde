@@ -1,4 +1,6 @@
+using Tilde.App.Alerts;
 using Tilde.App.Music;
+using Tilde.App.Productivity;
 using Tilde.App.Pages;
 using Tilde.Core;
 using Tilde.Core.Layout;
@@ -19,7 +21,7 @@ namespace Tilde.App.Notch;
 /// Todo funciona por eventos: mensajes de ratón, un temporizador alineado al minuto para el
 /// reloj, notificaciones de pantalla completa y de cambios de ajustes. Nada se sondea.
 /// </summary>
-internal sealed unsafe class NotchWindow : Win32Window
+internal sealed unsafe partial class NotchWindow : Win32Window
 {
     public const uint WM_APP_SETTINGS = WM_APP + 11;
     private const uint WM_APP_APPBAR = WM_APP + 10;
@@ -39,6 +41,8 @@ internal sealed unsafe class NotchWindow : Win32Window
     private readonly SettingsStore _settings;
     private readonly IReadOnlyList<Page> _pages;
     private readonly MusicController _music;
+    private readonly AlertCenter _alerts;
+    private readonly PomodoroService _pomodoro;
     private readonly FullscreenWatcher _fullscreen;
     private IDCompositionTarget _target;
     private NotchView? _view;
@@ -55,12 +59,15 @@ internal sealed unsafe class NotchWindow : Win32Window
     private bool _capturing;
     private bool _pointerInContent;
 
-    public NotchWindow(GraphicsDevice graphics, SettingsStore settings, IReadOnlyList<Page> pages, MusicController music)
+    public NotchWindow(GraphicsDevice graphics, SettingsStore settings, IReadOnlyList<Page> pages, MusicController music,
+        AlertCenter alerts, PomodoroService pomodoro)
     {
         _g = graphics;
         _settings = settings;
         _pages = pages;
         _music = music;
+        _alerts = alerts;
+        _pomodoro = pomodoro;
         _page = Math.Clamp(settings.Current.LastPage, 0, pages.Count - 1);
 
         CreateWindow("TildeNotch",
@@ -77,6 +84,15 @@ internal sealed unsafe class NotchWindow : Win32Window
         music.PlaybackChanged += UpdatePill;
         music.TrackChanged += UpdatePill;
         music.ArtChanged += UpdatePill;
+        pomodoro.MinuteChanged += UpdatePill;
+        alerts.Changed += UpdateAlert;
+        foreach (var page in pages)
+        {
+            if (page is CanvasPage canvas)
+            {
+                canvas.Host = this;
+            }
+        }
 
         _fullscreen = new FullscreenWatcher(Handle, WM_APP_APPBAR, () => _monitor);
         _fullscreen.Changed += _ => ApplyVisibility();
@@ -89,6 +105,17 @@ internal sealed unsafe class NotchWindow : Win32Window
             _demoStep = 100; // Solo abrir el notch y dejarlo abierto.
             Expand();
         }
+        else if (Environment.GetEnvironmentVariable("TILDE_DEBUG_DEMO") == "input")
+        {
+            // Abre la página de tareas y pulsa «Nueva tarea» (prueba del campo de texto).
+            _demoStep = 100;
+            Expand();
+            int tasks = _pages.ToList().FindIndex(p => p is TasksPage);
+            GoToPage(tasks);
+            ((CanvasPage)_pages[tasks]).DebugActivate("add");
+            _demoStep = 200;
+            SetTimer(Handle, TimerDemo, 3000, 0);
+        }
         else if (Environment.GetEnvironmentVariable("TILDE_DEBUG_DEMO") == "1")
         {
             SetTimer(Handle, TimerDemo, 1000, 0);
@@ -99,10 +126,14 @@ internal sealed unsafe class NotchWindow : Win32Window
     /// <summary>El usuario ha pulsado el botón de Ajustes de la barra.</summary>
     public event Action? SettingsRequested;
 
+    /// <summary>Se han recargado los ajustes desde el archivo.</summary>
+    public event Action? SettingsReloaded;
+
     /// <summary>Vuelve a leer los ajustes y reconstruye lo que haga falta.</summary>
     public void ApplySettings()
     {
         _music.ApplySettings();
+        SettingsReloaded?.Invoke();
         Render(Rebuild);
         ApplyVisibility();
     }
@@ -112,6 +143,8 @@ internal sealed unsafe class NotchWindow : Win32Window
         KillTimer(Handle, TimerClock);
         KillTimer(Handle, TimerCollapse);
         KillTimer(Handle, TimerRegion);
+        KillTimer(Handle, TimerAlert);
+        _textInput?.Dispose();
         _fullscreen.Dispose();
         _view?.Dispose();
         _theme?.Dispose();
@@ -129,15 +162,23 @@ internal sealed unsafe class NotchWindow : Win32Window
 
             case WM_MOUSELEAVE:
                 _trackingMouse = false;
-                if (!_capturing)
+                if (_shownAlert is not null)
+                {
+                    AlertMouseLeave();
+                }
+                else if (!_capturing && !InputOpen)
                 {
                     LeaveContent();
                     SetTimer(Handle, TimerCollapse, CollapseDelayMs, 0);
                 }
                 return 0;
 
-            case WM_LBUTTONDOWN:
+            case WM_LBUTTONDOWN when _shownAlert is null:
                 OnPointerDown(LoWord(lParam), HiWord(lParam));
+                return 0;
+
+            case WM_LBUTTONUP when _shownAlert is not null:
+                AlertClick(LoWord(lParam), HiWord(lParam));
                 return 0;
 
             case WM_LBUTTONUP:
@@ -217,6 +258,11 @@ internal sealed unsafe class NotchWindow : Win32Window
 
     private void OnMouseMove(int x, int y)
     {
+        if (_shownAlert is not null)
+        {
+            AlertMouseMove(x, y);
+            return;
+        }
         if (!_trackingMouse)
         {
             var tme = new TRACKMOUSEEVENT
@@ -281,11 +327,20 @@ internal sealed unsafe class NotchWindow : Win32Window
     /// <summary>¿Hay algo clicable bajo el cursor? (para mostrar la mano).</summary>
     private bool IsOverClickable()
     {
-        if (!_expanded || _view is null || !GetCursorPos(out var point))
+        if (_view is null || !GetCursorPos(out var point))
         {
             return false;
         }
         ScreenToClient(Handle, ref point);
+        if (_shownAlert is not null)
+        {
+            var (wx, wy) = ToWindowDip(point.X, point.Y);
+            return _view.HitTestAlert(wx, wy) != NotchView.AlertHitNone;
+        }
+        if (!_expanded)
+        {
+            return false;
+        }
         var (lx, ly) = ToLocal(point.X, point.Y);
         if (_view.HitTestBar(lx, ly) != NotchView.HitNone)
         {
@@ -377,7 +432,13 @@ internal sealed unsafe class NotchWindow : Win32Window
                 break;
             case TimerCollapse:
                 KillTimer(Handle, TimerCollapse);
-                Collapse();
+                if (!InputOpen && !_capturing)
+                {
+                    Collapse();
+                }
+                break;
+            case TimerAlert:
+                OnAlertTimer();
                 break;
 #if DEBUG
             case TimerDemo:
@@ -412,6 +473,10 @@ internal sealed unsafe class NotchWindow : Win32Window
 
     private void Expand()
     {
+        if (_shownAlert is not null)
+        {
+            return; // Con un aviso en pantalla, el notch no se abre hasta cerrarlo.
+        }
         _expanded = true;
         _wheelAccumulator = 0;
         KillTimer(Handle, TimerRegion);
@@ -475,6 +540,7 @@ internal sealed unsafe class NotchWindow : Win32Window
             ShowWindow(Handle, SW_SHOWNOACTIVATE);
             ReassertTopmost();
         }
+        UpdateAlert();
     }
 
     /// <summary>Otras ventanas «siempre encima» pueden taparnos: al cambiar de app volvemos arriba.</summary>
@@ -515,6 +581,10 @@ internal sealed unsafe class NotchWindow : Win32Window
             case 3: Render(() => _view?.SetBarHover(false)); break;
             case 4: GoToPage(_page - 1); break;
             case 5: Collapse(); break;
+            case 200:
+                _textInput?.DebugSubmit("Comprar pan en 30 min");
+                KillTimer(Handle, TimerDemo);
+                break;
             default: KillTimer(Handle, TimerDemo); break;
         }
     }
@@ -530,6 +600,11 @@ internal sealed unsafe class NotchWindow : Win32Window
         if (_settings.Current.LyricsInPill && !_settings.Current.MinimalNotch && _music.CurrentLineText is { } line)
         {
             pill = new PillContent(line.Length > 0 ? line : "♪", _music.GetArt(), IsLyric: true);
+        }
+        else if (!_settings.Current.MinimalNotch && _pomodoro.PillText is { } remaining)
+        {
+            // Pomodoro en curso: icono de cronómetro y minutos que quedan (cambia una vez por minuto).
+            pill = new PillContent(remaining, null, IsLyric: false, Icon: IconKind.Timer);
         }
         else
         {
@@ -573,6 +648,10 @@ internal sealed unsafe class NotchWindow : Win32Window
         var now = DateTime.Now;
         _view.SetClock(RegionalFormat.ShortTime(now), RegionalFormat.DayAndMonth(now));
         UpdatePill();
+        if (_shownAlert is { } alert)
+        {
+            _view.ShowAlert(alert);
+        }
         UpdateRegion();
     }
 
@@ -586,8 +665,8 @@ internal sealed unsafe class NotchWindow : Win32Window
         {
             return;
         }
-        var r = _expanded
-            ? new RECT { Right = _geo.WindowPixelWidth, Bottom = _geo.WindowPixelHeight }
+        var r = _shownAlert is not null ? _view.AlertRegion
+            : _expanded ? new RECT { Right = _geo.WindowPixelWidth, Bottom = _geo.WindowPixelHeight }
             : _view.CollapsedRegion;
         nint region = CreateRectRgn(r.Left, r.Top, r.Right, r.Bottom);
         if (SetWindowRgn(Handle, region, true) == 0)

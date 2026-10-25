@@ -19,7 +19,7 @@ namespace Tilde.App.Notch;
 /// Abrir o cerrar el notch no redibuja nada: solo anima el recorte y la opacidad de las
 /// capas, y esas animaciones las ejecuta el compositor de Windows.
 /// </summary>
-internal sealed class NotchView : IDisposable
+internal sealed partial class NotchView : IDisposable
 {
     public const int HitNone = -1;
     public const int HitSettings = -2;
@@ -133,6 +133,8 @@ internal sealed class NotchView : IDisposable
         _iconsOpacity = new AnimatedValue(v => _icons.Visual.SetOpacity(v), a => _icons.Visual.SetOpacity(a), 0);
         DrawBar();
 
+        CreateAlertLayer();
+
         var slot = EnsureSlot(_active);
         slot.Opacity.Set(1);
         UpdatePageVisibility();
@@ -179,7 +181,7 @@ internal sealed class NotchView : IDisposable
         bool textChanged = pill.Text != _pill.Text;
         _pill = pill;
         float f = _geo.F;
-        float art = pill.Art is null ? 0 : PillArtSize + PillArtGap;
+        float art = pill.Art is null && pill.Icon is null ? 0 : PillArtSize + PillArtGap;
         float maxText = _geo.ExpandedWidthDip - 2 * NotchMetricsPadding - art;
         float textWidth = MathF.Min(Text.Measure(_theme.DWrite, pill.Text, _theme.Clock), maxText);
         float width = MathF.Min(_geo.CollapsedWidthDip(textWidth + art), _geo.ExpandedWidthDip);
@@ -196,10 +198,16 @@ internal sealed class NotchView : IDisposable
                 Images.DrawRounded(dc, bitmap, new RectF(x, y, PillArtSize, PillArtSize), 4f * f);
                 x += art;
             }
+            else if (_pill.Icon is { } icon)
+            {
+                float size = PillArtSize * 0.95f;
+                _theme.Icons.Draw(dc, icon, x, (_clock.HeightDip - size) / 2, size, _theme.Accent);
+                x += art;
+            }
             Text.Draw(dc, _theme.DWrite, _pill.Text, _theme.Clock, new RectF(x, 0, textWidth + 1, _clock.HeightDip), _theme.Primary);
         });
 
-        if (!_isExpanded)
+        if (!_isExpanded && _alert is null)
         {
             if (widthChanged)
             {
@@ -340,6 +348,7 @@ internal sealed class NotchView : IDisposable
         }
         _dots.Dispose();
         _icons.Dispose();
+        _alertSurface.Dispose();
         _header.Dispose();
         _pageHost.Dispose();
         _expanded.Dispose();
@@ -475,7 +484,7 @@ internal sealed class NotchView : IDisposable
 }
 
 /// <summary>Lo que muestra la píldora cerrada.</summary>
-internal sealed record PillContent(string Text, Vortice.Direct2D1.ID2D1Bitmap? Art, bool IsLyric)
+internal sealed record PillContent(string Text, Vortice.Direct2D1.ID2D1Bitmap? Art, bool IsLyric, IconKind? Icon = null)
 {
     public static PillContent Clock(string time) => new(time, null, false);
 }

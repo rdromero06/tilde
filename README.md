@@ -8,7 +8,7 @@ archivos y Claude).
 Su mascota es la propia virgulilla «~»: cuando se duerme se aplana hasta convertirse en una
 línea, que es también el aspecto del modo «notch mínimo».
 
-> Estado: **fase 2 de 7** (música y letras). Las páginas que aún no existen son marcadores que
+> Estado: **fase 3 de 7** (Pomodoro, agua y tareas). Las páginas que aún no existen son marcadores que
 > indican en qué fase llegan.
 
 ## Objetivos de diseño
@@ -27,6 +27,7 @@ Mediciones (publicación AOT, Full HD):
 |---|---|---|
 | Reposo, sin música (fase 1) | 11,5 MB | 0 ms en 60 s |
 | Música sonando con la letra en la píldora (opcional, fase 2) | 22,9 MB | 78 ms en 60 s (0,13 % de un núcleo) |
+| Reposo con Pomodoro, agua y tareas cargados (fase 3) | 20,9 MB | 0 ms en 60 s |
 
 ## Requisitos para compilar
 
@@ -83,6 +84,35 @@ El instalador por usuario (sin permisos de administrador) llega en la fase 7. Ha
   archivo cifrados por hash) para no repetir peticiones. Si una canción no tiene letra, se vuelve
   a buscar pasados 3 días.
 
+### Pomodoro
+
+- Anillo de progreso con la cuenta atrás, fase (foco, descanso corto o largo), sesión del ciclo
+  y focos completados hoy. Botones **Empezar/Pausar** (o Espacio), **reiniciar** y **saltar**.
+- Al terminar una fase suena un aviso suave y aparece una tarjeta. Los descansos empiezan solos y
+  el siguiente foco espera a que lo empieces (configurable).
+- Con el notch cerrado, la **píldora muestra los minutos que quedan** (se actualiza una vez por
+  minuto).
+
+### Agua
+
+- Vaso que se llena, total del día frente a la meta, botón **Beber** (+ tamaño del vaso),
+  **deshacer** y **gráfico por horas**. «Vaso» y «Meta» se cambian con un clic.
+- Avisos dentro del horario configurado cuando llevas un rato sin beber; se paran al cumplir la
+  meta. El aviso permite beber directamente.
+
+### Tareas
+
+- Se escriben en lenguaje natural, en español o inglés: «Llamar a Ana 18:30», «Pizza en 20 min»,
+  «Dentista mañana 10:00», «Gym at 7pm». La hora se reconoce sola.
+- Casilla del color de la tarea; al pasar el ratón por una fila aparecen el **color** (clic para
+  cambiarlo) y **borrar**. Clic en el texto para editarla. Las hechas de días anteriores se limpian
+  solas.
+- A la hora indicada: **«¡Se acabó el tiempo!»** con **Posponer 10 min** o **Hecho**. Este aviso no
+  se cierra solo.
+
+El texto se escribe en un campo nativo de Windows (con IME, portapapeles y deshacer). Intro
+guarda, Esc cancela.
+
 ### settings.json
 
 ```jsonc
@@ -95,6 +125,18 @@ El instalador por usuario (sin permisos de administrador) llega en la fase 7. Ha
   "lyricsOnline": true,       // buscar letras en LRCLIB
   "lyricsInPill": false,      // línea actual de la letra en la píldora cerrada
   "lyricsView": false,        // la página de música abre en la vista de letras
+  "soundsEnabled": true,      // sonidos suaves en los avisos
+  "pomodoro": {
+    "focusMinutes": 25, "shortBreakMinutes": 5, "longBreakMinutes": 15,
+    "sessionsBeforeLongBreak": 4,
+    "autoStartBreaks": true, "autoStartFocus": false,
+    "showInPill": true          // minutos restantes en la píldora cerrada
+  },
+  "water": {
+    "glassMl": 250, "goalMl": 2000,
+    "remindersEnabled": true, "reminderStart": "09:00", "reminderEnd": "21:00",
+    "reminderIntervalMinutes": 60
+  },
   "lastPage": 0
 }
 ```
@@ -107,10 +149,12 @@ ultrapanorámicos.
 ```
 src/
   Tilde.Core/       Lógica pura y testeable: ajustes, métricas, curvas de animación, log,
-                    letras (parser LRC, limpieza de títulos, cliente LRCLIB y caché)
+                    letras (parser LRC, limpieza de títulos, cliente LRCLIB y caché),
+                    Pomodoro, agua, tareas y entrada rápida en lenguaje natural
   Tilde.Platform/   Interop con Windows (LibraryImport + WinRT): ventanas, bandeja, pantalla
                     completa, formato regional, inicio con Windows, controles multimedia
-                    (GSMTC), volumen (Core Audio) y despachador del hilo de interfaz
+                    (GSMTC), volumen (Core Audio), despachador del hilo de interfaz, campo de
+                    texto nativo y sonidos sintetizados
   Tilde.Render/     Mini motor: Direct3D 11 (WARP) + Direct2D + DirectWrite + DirectComposition
   Tilde.App/        Tilde.exe: ventana del notch, capas, páginas, música, bandeja
 tests/
@@ -138,6 +182,12 @@ scripts/            build.ps1, publish.ps1, make-icon.ps1
 - **Volumen por eventos.** Tilde registra sus propios objetos COM de aviso en Core Audio, así que
   el deslizador se entera de los cambios hechos desde el teclado o desde otras apps, y de los
   cambios de dispositivo (p. ej. al conectar unos auriculares).
+- **Avisos sin sondeos.** Pomodoro, agua y tareas programan un único temporizador para su
+  próximo momento; al cambiar algo se recalcula. El aviso es una tarjeta que sale de la píldora,
+  con sonido propio (sintetizado, sin archivos) y se pausa mientras tienes el ratón encima. Con
+  una app a pantalla completa, los avisos esperan a que salgas.
+- **Datos.** `tasks.json`, `water.json` (60 días de historial) y `pomodoro.json` en la carpeta de
+  datos, con escritura atómica.
 - **Logs.** `%LOCALAPPDATA%\Tilde\logs\tilde.log`. Nunca contienen claves ni texto del usuario.
 
 ### Variables solo para depuración (compilación Debug)
@@ -147,6 +197,7 @@ scripts/            build.ps1, publish.ps1, make-icon.ps1
 | `TILDE_DEBUG_OFFSET_X=560` | Desplaza el notch en horizontal, para probarlo junto a otra app de notch |
 | `TILDE_DEBUG_DEMO=1` | Abre el notch, cambia de página y lo cierra solo (un paso por segundo) |
 | `TILDE_DEBUG_DEMO=hold` | Abre el notch y lo deja abierto |
+| `TILDE_DEBUG_DEMO=input` | Abre Tareas, pulsa «Nueva tarea» y escribe una de prueba |
 | `TILDE_RENDERER=gpu` | Dibuja con la GPU en lugar de WARP (también en Release) |
 | `TILDE_DATA_DIR=C:\ruta` | Usa otra carpeta de datos (también en Release) |
 
@@ -154,7 +205,7 @@ scripts/            build.ps1, publish.ps1, make-icon.ps1
 
 1. ✅ Ventana del notch y bandeja
 2. ✅ Música (controles multimedia de Windows) y letras sincronizadas (LRCLIB)
-3. Pomodoro, agua y tareas
+3. ✅ Pomodoro, agua y tareas
 4. Estante de archivos
 5. HUD (volumen, brillo, Bloq Mayús, batería, Wi-Fi, Bluetooth) y mascota
 6. Claude (streaming, contador de tokens, claves en el Administrador de credenciales)

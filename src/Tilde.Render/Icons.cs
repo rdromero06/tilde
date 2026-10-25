@@ -21,6 +21,14 @@ public enum IconKind
     Volume,
     VolumeMuted,
     Lyrics,
+    Close,
+    Plus,
+    Restart,
+    Check,
+    ChevronUp,
+    ChevronDown,
+    Undo,
+    Bell,
 }
 
 /// <summary>
@@ -116,6 +124,36 @@ public sealed class IconSet : IDisposable
         ];
 
         AddMediaIcons(factory);
+        AddUiIcons(factory);
+    }
+
+    private void AddUiIcons(ID2D1Factory1 factory)
+    {
+        _icons[IconKind.Close] = [(Path(factory, p => p.Move(6.5f, 6.5f).Line(17.5f, 17.5f).Move(17.5f, 6.5f).Line(6.5f, 17.5f)), false)];
+        _icons[IconKind.Plus] = [(Path(factory, p => p.Move(12f, 5f).Line(12f, 19f).Move(5f, 12f).Line(19f, 12f)), false)];
+        _icons[IconKind.Check] = [(Path(factory, p => p.Move(5.5f, 12.5f).Line(10f, 17f).Line(18.5f, 7.5f)), false)];
+        _icons[IconKind.ChevronUp] = [(Path(factory, p => p.Move(6.5f, 14.5f).Line(12f, 9f).Line(17.5f, 14.5f)), false)];
+        _icons[IconKind.ChevronDown] = [(Path(factory, p => p.Move(6.5f, 9.5f).Line(12f, 15f).Line(17.5f, 9.5f)), false)];
+        // Reiniciar: arco de casi una vuelta con punta de flecha.
+        _icons[IconKind.Restart] =
+        [
+            (Path(factory, p => p.Move(18.4f, 9f).Curve(17.2f, 6.2f, 14.8f, 4.8f, 12f, 4.8f)
+                                 .Curve(8f, 4.8f, 4.8f, 8f, 4.8f, 12f).Curve(4.8f, 16f, 8f, 19.2f, 12f, 19.2f)
+                                 .Curve(15.4f, 19.2f, 18.3f, 16.8f, 19f, 13.6f)
+                                 .Move(18.6f, 4.6f).Line(18.6f, 9.2f).Line(14f, 9.2f)), false),
+        ];
+        _icons[IconKind.Undo] =
+        [
+            (Path(factory, p => p.Move(9f, 6f).Line(5f, 10f).Line(9f, 14f)
+                                 .Move(5f, 10f).Line(14.5f, 10f).Curve(17.5f, 10f, 19.5f, 12f, 19.5f, 14.5f)
+                                 .Curve(19.5f, 17f, 17.5f, 19f, 14.5f, 19f).Line(11f, 19f)), false),
+        ];
+        _icons[IconKind.Bell] =
+        [
+            (Path(factory, p => p.Move(6f, 16.5f).Line(6f, 11f).Curve(6f, 7.5f, 8.7f, 5f, 12f, 5f)
+                                 .Curve(15.3f, 5f, 18f, 7.5f, 18f, 11f).Line(18f, 16.5f).Line(19.5f, 18f).Line(4.5f, 18f).Close()
+                                 .Move(10f, 20.5f).Line(14f, 20.5f)), false),
+        ];
     }
 
     private void AddMediaIcons(ID2D1Factory1 factory)
