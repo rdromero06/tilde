@@ -33,6 +33,7 @@ internal sealed class TildeApp : IDisposable
     private readonly PomodoroService _pomodoro;
     private readonly WaterService _water;
     private readonly TasksService _tasks;
+    private readonly ShelfService _shelf = new();
     private readonly NotchWindow _notch;
     private readonly TrayIcon _tray;
     private readonly nint _icon;
@@ -54,8 +55,8 @@ internal sealed class TildeApp : IDisposable
         _pomodoro = new PomodoroService(_settings, _alerts);
         _water = new WaterService(_settings, _alerts);
         _tasks = new TasksService(_alerts);
-        var pages = PageCatalog.Create(_music, _settings, _pomodoro, _water, _tasks);
-        _notch = new NotchWindow(_graphics, _settings, pages, _music, _alerts, _pomodoro);
+        var pages = PageCatalog.Create(_music, _settings, _pomodoro, _water, _tasks, _shelf);
+        _notch = new NotchWindow(_graphics, _settings, pages, _music, _alerts, _pomodoro, _shelf);
         _notch.SettingsReloaded += () =>
         {
             _pomodoro.ApplySettings();

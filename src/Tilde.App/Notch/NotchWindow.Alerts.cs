@@ -1,6 +1,7 @@
 using Tilde.App.Alerts;
 using Tilde.App.Pages;
 using Tilde.Platform;
+using Tilde.Platform.Shell;
 using Tilde.Platform.Interop;
 using Tilde.Render;
 using static Tilde.Platform.Interop.Native;
@@ -107,6 +108,71 @@ internal sealed unsafe partial class NotchWindow : INotchHost
     }
 
     private (float X, float Y) ToWindowDip(int x, int y) => (x / _geo.Scale, y / _geo.Scale);
+
+    // ── Arrastrar y soltar ──
+
+    private DropTarget? _drop;
+    private bool _dragOver;
+
+    private ShelfPage? Shelf => _pages.OfType<ShelfPage>().FirstOrDefault();
+
+    /// <summary>Registra el notch como destino de arrastre: soltar sobre la píldora abre el estante.</summary>
+    private void InitDragDrop()
+    {
+        _drop = new DropTarget(Handle)
+        {
+            Entered = OnDragEntered,
+            Left = OnDragLeft,
+            Dropped = OnDropped,
+        };
+    }
+
+    private bool OnDragEntered(DroppedData data)
+    {
+        if (_hidden || Shelf is not { } shelf || _shownAlert is not null)
+        {
+            return false;
+        }
+        _dragOver = true;
+        KillTimer(Handle, TimerCollapse);
+        if (!_expanded)
+        {
+            Expand();
+        }
+        GoToPage(_pages.ToList().IndexOf(shelf));
+        Render(() => shelf.SetDropHover(true));
+        return true;
+    }
+
+    private void OnDragLeft()
+    {
+        _dragOver = false;
+        Render(() => Shelf?.SetDropHover(false));
+        SetTimer(Handle, TimerCollapse, CollapseDelayMs, 0);
+    }
+
+    private void OnDropped(DroppedData data)
+    {
+        _dragOver = false;
+        Render(() => Shelf?.SetDropHover(false));
+        _shelf.AddDropped(data);
+        TrackMouseLeave(); // Si el ratón ya no está encima, el notch se cerrará como siempre.
+    }
+
+    /// <summary>Saca archivos del notch arrastrándolos (bucle modal de Windows hasta soltar).</summary>
+    public bool BeginFileDrag(IReadOnlyList<string> paths)
+    {
+        if (_capturing)
+        {
+            ReleaseCapture();
+            _capturing = false;
+        }
+        bool dropped = FileDrag.Start(Handle, paths);
+        TrackMouseLeave();
+        return dropped;
+    }
+
+    public bool CopyText(string text) => SystemActions.CopyText(Handle, text);
 
     // ── Campo de texto ──
 

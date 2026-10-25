@@ -29,6 +29,8 @@ public enum IconKind
     ChevronDown,
     Undo,
     Bell,
+    ChevronLeft,
+    ChevronRight,
 }
 
 /// <summary>
@@ -134,6 +136,8 @@ public sealed class IconSet : IDisposable
         _icons[IconKind.Check] = [(Path(factory, p => p.Move(5.5f, 12.5f).Line(10f, 17f).Line(18.5f, 7.5f)), false)];
         _icons[IconKind.ChevronUp] = [(Path(factory, p => p.Move(6.5f, 14.5f).Line(12f, 9f).Line(17.5f, 14.5f)), false)];
         _icons[IconKind.ChevronDown] = [(Path(factory, p => p.Move(6.5f, 9.5f).Line(12f, 15f).Line(17.5f, 9.5f)), false)];
+        _icons[IconKind.ChevronLeft] = [(Path(factory, p => p.Move(14.5f, 6.5f).Line(9f, 12f).Line(14.5f, 17.5f)), false)];
+        _icons[IconKind.ChevronRight] = [(Path(factory, p => p.Move(9.5f, 6.5f).Line(15f, 12f).Line(9.5f, 17.5f)), false)];
         // Reiniciar: arco de casi una vuelta con punta de flecha.
         _icons[IconKind.Restart] =
         [

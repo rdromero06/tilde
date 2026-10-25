@@ -73,6 +73,16 @@ public static class Strings
     public static string TasksDone => T("Hecho", "Done");
     public static string Tomorrow => T("mañana", "tomorrow");
 
+    // Estante
+    public static string ShelfDropHint => T("Arrastra aquí archivos, carpetas o texto", "Drop files, folders or text here");
+    public static string ShelfDropDetail => T("Se guardan como enlaces, no como copias", "Kept as links, never copied");
+    public static string ShelfDropNow => T("Suelta para añadir", "Drop to add");
+    public static string ShelfCount(int n) => T(n == 1 ? "1 elemento" : $"{n} elementos", n == 1 ? "1 item" : $"{n} items");
+    public static string ShelfSelected(int selected, int total) => T($"{selected} de {total} seleccionados", $"{selected} of {total} selected");
+    public static string ShelfClear => T("Vaciar todo", "Clear all");
+    public static string ShelfCopied => T("Copiado", "Copied");
+    public static string ShelfMissing => T("No encontrado", "Not found");
+
     // Bandeja del sistema
     public static string TrayStartWithWindows => T("Iniciar con Windows", "Start with Windows");
     public static string TrayMascot => T("Mascota", "Mascot");

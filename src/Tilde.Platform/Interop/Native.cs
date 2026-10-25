@@ -107,6 +107,31 @@ public unsafe struct NOTIFYICONDATAW
 }
 
 [StructLayout(LayoutKind.Sequential)]
+public struct FORMATETC
+{
+    public ushort cfFormat;
+    public nint ptd;
+    public uint dwAspect;
+    public int lindex;
+    public uint tymed;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public struct STGMEDIUM
+{
+    public uint tymed;
+    public nint handle;
+    public nint pUnkForRelease;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public struct SIZE
+{
+    public int cx;
+    public int cy;
+}
+
+[StructLayout(LayoutKind.Sequential)]
 public struct SYSTEMTIME
 {
     public ushort wYear;
@@ -487,6 +512,95 @@ public static unsafe partial class Native
 
     // ── ole32 ──
     public const uint CLSCTX_ALL = 0x17;
+    public const uint CLSCTX_INPROC_SERVER = 0x1;
+
+    [LibraryImport("ole32.dll")]
+    public static partial int OleInitialize(nint reserved);
+
+    [LibraryImport("ole32.dll")]
+    public static partial void OleUninitialize();
+
+    [LibraryImport("ole32.dll")]
+    public static partial int RegisterDragDrop(nint hwnd, nint dropTarget);
+
+    [LibraryImport("ole32.dll")]
+    public static partial int RevokeDragDrop(nint hwnd);
+
+    [LibraryImport("ole32.dll")]
+    public static partial void ReleaseStgMedium(STGMEDIUM* medium);
+
+    // ── Arrastrar y soltar, shell ──
+    public const ushort CF_UNICODETEXT = 13;
+    public const ushort CF_HDROP = 15;
+    public const uint TYMED_HGLOBAL = 1;
+    public const uint DVASPECT_CONTENT = 1;
+    public const uint DROPEFFECT_NONE = 0, DROPEFFECT_COPY = 1, DROPEFFECT_MOVE = 2, DROPEFFECT_LINK = 4;
+    public const int DRAGDROP_S_DROP = 0x00040100;
+
+    [LibraryImport("shell32.dll")]
+    public static partial uint DragQueryFileW(nint drop, uint index, char* buffer, uint size);
+
+    [LibraryImport("shell32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial int SHParseDisplayName(string name, nint bindContext, out nint pidl, uint sfgaoIn, out uint sfgaoOut);
+
+    [LibraryImport("shell32.dll")]
+    public static partial int SHCreateShellItemArrayFromIDLists(uint count, nint* pidls, out nint itemArray);
+
+    [LibraryImport("shell32.dll")]
+    public static partial int SHDoDragDrop(nint hwnd, nint dataObject, nint dropSource, uint effects, out uint effect);
+
+    [LibraryImport("shell32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial int SHCreateItemFromParsingName(string path, nint bindContext, in Guid iid, out nint item);
+
+    [LibraryImport("shell32.dll")]
+    public static partial void ILFree(nint pidl);
+
+    // ── Portapapeles y memoria global ──
+    public const uint GMEM_MOVEABLE = 0x0002;
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool OpenClipboard(nint hwnd);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool EmptyClipboard();
+
+    [LibraryImport("user32.dll")]
+    public static partial nint SetClipboardData(uint format, nint data);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool CloseClipboard();
+
+    [LibraryImport("kernel32.dll")]
+    public static partial nint GlobalAlloc(uint flags, nuint bytes);
+
+    [LibraryImport("kernel32.dll")]
+    public static partial nint GlobalLock(nint memory);
+
+    [LibraryImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool GlobalUnlock(nint memory);
+
+    [LibraryImport("kernel32.dll")]
+    public static partial nuint GlobalSize(nint memory);
+
+    [LibraryImport("kernel32.dll")]
+    public static partial nint GlobalFree(nint memory);
+
+    // ── Teclado y ratón ──
+    public const int VK_SHIFT = 0x10, VK_CONTROL = 0x11, VK_DELETE = 0x2E;
+    public const int SM_CXDRAG = 68, SM_CYDRAG = 69;
+
+    [LibraryImport("user32.dll")]
+    public static partial short GetKeyState(int key);
+
+    [LibraryImport("user32.dll")]
+    public static partial uint GetDoubleClickTime();
+
+    [LibraryImport("user32.dll")]
+    public static partial int GetSystemMetrics(int index);
 
     [LibraryImport("ole32.dll")]
     public static partial int CoCreateInstance(in Guid clsid, nint outer, uint context, in Guid iid, out nint instance);

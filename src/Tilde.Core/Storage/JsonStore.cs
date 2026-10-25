@@ -52,4 +52,5 @@ public sealed class JsonStore<T>(string path, JsonTypeInfo<T> typeInfo) where T 
 [JsonSerializable(typeof(TasksData))]
 [JsonSerializable(typeof(WaterData))]
 [JsonSerializable(typeof(PomodoroData))]
+[JsonSerializable(typeof(ShelfData))]
 public sealed partial class DataJsonContext : JsonSerializerContext;

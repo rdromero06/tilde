@@ -9,6 +9,12 @@ internal interface INotchHost
 {
     /// <summary>Muestra un campo de texto nativo sobre <paramref name="rectInPage"/>.</summary>
     void RequestTextInput(RectF rectInPage, string placeholder, string text, Action<string> onSubmit);
+
+    /// <summary>Arrastra archivos desde el notch hacia otras apps. Devuelve true si se soltaron.</summary>
+    bool BeginFileDrag(IReadOnlyList<string> paths);
+
+    /// <summary>Copia texto al portapapeles.</summary>
+    bool CopyText(string text);
 }
 
 /// <summary>
@@ -50,6 +56,9 @@ internal abstract class CanvasPage : Page
     protected RectF Zone(RectF rect, string id) => _zones.Add(rect, id);
 
     protected bool IsHover(string id) => Hover == id;
+
+    /// <summary>Zona bajo un punto (según el último dibujo).</summary>
+    protected string? FindZone(float x, float y) => _zones.Find(x, y);
 
     protected abstract void Draw(ID2D1DeviceContext dc, Theme theme, float width, float height);
 

@@ -8,7 +8,7 @@ archivos y Claude).
 Su mascota es la propia virgulilla «~»: cuando se duerme se aplana hasta convertirse en una
 línea, que es también el aspecto del modo «notch mínimo».
 
-> Estado: **fase 3 de 7** (Pomodoro, agua y tareas). Las páginas que aún no existen son marcadores que
+> Estado: **fase 4 de 7** (estante de archivos). Las páginas que aún no existen son marcadores que
 > indican en qué fase llegan.
 
 ## Objetivos de diseño
@@ -28,6 +28,7 @@ Mediciones (publicación AOT, Full HD):
 | Reposo, sin música (fase 1) | 11,5 MB | 0 ms en 60 s |
 | Música sonando con la letra en la píldora (opcional, fase 2) | 22,9 MB | 78 ms en 60 s (0,13 % de un núcleo) |
 | Reposo con Pomodoro, agua y tareas cargados (fase 3) | 20,9 MB | 0 ms en 60 s |
+| Reposo con el estante y música sonando (fase 4) | 17,6 MB | 31 ms en 60 s |
 
 ## Requisitos para compilar
 
@@ -115,6 +116,21 @@ El instalador por usuario (sin permisos de administrador) llega en la fase 7. Ha
 El texto se escribe en un campo nativo de Windows (con IME, portapapeles y deshacer). Intro
 guarda, Esc cancela.
 
+### Estante de archivos
+
+- **Arrastra** archivos, carpetas o texto **sobre la píldora**: el notch se abre en el estante y
+  se resalta para soltar. Se guardan **rutas, nunca copias** (y el origen nunca se mueve ni se
+  borra).
+- Tarjetas con la **miniatura** o el icono de Windows; las tarjetas de **texto** se copian al
+  portapapeles con un clic. Si un archivo se borra o se mueve, su tarjeta aparece atenuada como
+  «No encontrado».
+- **Selección**: clic, **Ctrl+clic** (alternar), **Mayús+clic** (rango), **Ctrl+A** (todo) y
+  **Supr** (quitar). Doble clic abre el archivo.
+- **Arrastra** una tarjeta, o toda la selección, a otra app para entregar los archivos (se
+  ofrecen como copia o acceso directo). Si se sueltan, salen del estante; **si cancelas el
+  arrastre, se quedan**.
+- **Vaciar todo** en la cabecera; ✕ en cada tarjeta al pasar el ratón. Máximo 60 elementos.
+
 ### settings.json
 
 ```jsonc
@@ -145,6 +161,14 @@ guarda, Esc cancela.
 
 «Auto» usa un tamaño mayor (×1,2) en monitores de al menos 2560 DIP de ancho o
 ultrapanorámicos.
+
+## Problemas conocidos
+
+- **«Una directiva de Control de aplicaciones bloqueó este archivo».** Con el *Control
+  inteligente de aplicaciones* de Windows 11 activado, un `Tilde.exe` recién compilado y sin firma
+  digital puede bloquearse por falta de «reputación» (nos ha pasado con algún binario y no con
+  otros). La solución de fondo es firmar el ejecutable; se abordará con el instalador (fase 7).
+  Mientras tanto, la versión de depuración (`scriptsuild.ps1`) suele arrancar sin problema.
 
 ## Estructura
 
@@ -188,8 +212,12 @@ scripts/            build.ps1, publish.ps1, make-icon.ps1
   próximo momento; al cambiar algo se recalcula. El aviso es una tarjeta que sale de la píldora,
   con sonido propio (sintetizado, sin archivos) y se pausa mientras tienes el ratón encima. Con
   una app a pantalla completa, los avisos esperan a que salgas.
-- **Datos.** `tasks.json`, `water.json` (60 días de historial) y `pomodoro.json` en la carpeta de
-  datos, con escritura atómica.
+- **Datos.** `tasks.json`, `water.json` (60 días de historial), `pomodoro.json` y `shelf.json`
+  en la carpeta de datos, con escritura atómica.
+- **Arrastrar y soltar nativo.** Tilde implementa `IDropTarget` de OLE a mano (compatible con AOT)
+  y usa el ayudante del shell para que la imagen del arrastre se siga viendo. Para sacar archivos
+  crea el objeto de datos del propio shell (`SHCreateShellItemArrayFromIDLists`) y arrastra con
+  `SHDoDragDrop`, igual que el Explorador.
 - **Logs.** `%LOCALAPPDATA%\Tilde\logs\tilde.log`. Nunca contienen claves ni texto del usuario.
 
 ### Variables solo para depuración (compilación Debug)
@@ -208,7 +236,7 @@ scripts/            build.ps1, publish.ps1, make-icon.ps1
 1. ✅ Ventana del notch y bandeja
 2. ✅ Música (controles multimedia de Windows) y letras sincronizadas (LRCLIB)
 3. ✅ Pomodoro, agua y tareas
-4. Estante de archivos
+4. ✅ Estante de archivos
 5. HUD (volumen, brillo, Bloq Mayús, batería, Wi-Fi, Bluetooth) y mascota
 6. Claude (streaming, contador de tokens, claves en el Administrador de credenciales)
 7. Ventana de Ajustes, instalador y pulido

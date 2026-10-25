@@ -10,13 +10,13 @@ namespace Tilde.App.Pages;
 internal static class PageCatalog
 {
     public static IReadOnlyList<Page> Create(MusicController music, SettingsStore settings,
-        PomodoroService pomodoro, WaterService water, TasksService tasks) =>
+        PomodoroService pomodoro, WaterService water, TasksService tasks, ShelfService shelf) =>
     [
         new MusicPage(music, settings),
         new PomodoroPage(pomodoro),
         new WaterPage(water),
         new TasksPage(tasks),
-        new PlaceholderPage(Strings.PageShelf, IconKind.Shelf, 4),
+        new ShelfPage(shelf),
         new PlaceholderPage(Strings.PageClaude, IconKind.Spark, 6),
     ];
 }

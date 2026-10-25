@@ -43,6 +43,7 @@ internal sealed unsafe partial class NotchWindow : Win32Window
     private readonly MusicController _music;
     private readonly AlertCenter _alerts;
     private readonly PomodoroService _pomodoro;
+    private readonly ShelfService _shelf;
     private readonly FullscreenWatcher _fullscreen;
     private IDCompositionTarget _target;
     private NotchView? _view;
@@ -60,8 +61,9 @@ internal sealed unsafe partial class NotchWindow : Win32Window
     private bool _pointerInContent;
 
     public NotchWindow(GraphicsDevice graphics, SettingsStore settings, IReadOnlyList<Page> pages, MusicController music,
-        AlertCenter alerts, PomodoroService pomodoro)
+        AlertCenter alerts, PomodoroService pomodoro, ShelfService shelf)
     {
+        _shelf = shelf;
         _g = graphics;
         _settings = settings;
         _pages = pages;
@@ -97,6 +99,7 @@ internal sealed unsafe partial class NotchWindow : Win32Window
         _fullscreen = new FullscreenWatcher(Handle, WM_APP_APPBAR, () => _monitor);
         _fullscreen.Changed += _ => ApplyVisibility();
         _fullscreen.ForegroundChanged += ReassertTopmost;
+        InitDragDrop();
         ApplyVisibility();
         UpdateClock();
 #if DEBUG
@@ -155,6 +158,7 @@ internal sealed unsafe partial class NotchWindow : Win32Window
         KillTimer(Handle, TimerRegion);
         KillTimer(Handle, TimerAlert);
         _textInput?.Dispose();
+        _drop?.Dispose();
         _fullscreen.Dispose();
         _view?.Dispose();
         _theme?.Dispose();
@@ -442,7 +446,7 @@ internal sealed unsafe partial class NotchWindow : Win32Window
                 break;
             case TimerCollapse:
                 KillTimer(Handle, TimerCollapse);
-                if (!InputOpen && !_capturing)
+                if (!InputOpen && !_capturing && !_dragOver)
                 {
                     Collapse();
                 }

@@ -38,6 +38,34 @@ public static class Images
         }
     }
 
+    /// <summary>Convierte un HBITMAP de 32 bits (miniatura o icono del shell) en un bitmap de Direct2D.</summary>
+    public static ID2D1Bitmap1? FromHBitmap(GraphicsDevice device, nint hbitmap)
+    {
+        try
+        {
+            s_wic ??= new IWICImagingFactory();
+            using var source = s_wic.CreateBitmapFromHBITMAP(hbitmap, 0, BitmapAlphaChannelOption.UsePremultipliedAlpha);
+            using var converter = s_wic.CreateFormatConverter();
+            converter.Initialize(source, PixelFormat.Format32bppPBGRA);
+            return device.ResourceContext.CreateBitmapFromWicBitmap(converter, null);
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"No se pudo convertir el icono ({ex.Message})");
+            return null;
+        }
+    }
+
+    /// <summary>Dibuja la imagen ajustada dentro del rectángulo, sin deformarla ni recortarla.</summary>
+    public static void DrawFit(ID2D1DeviceContext dc, ID2D1Bitmap bitmap, RectF rect, float opacity = 1f)
+    {
+        var size = bitmap.Size;
+        float k = Math.Min(rect.W / size.Width, rect.H / size.Height);
+        float w = size.Width * k, h = size.Height * k;
+        var dest = new Vortice.RawRectF(rect.X + (rect.W - w) / 2, rect.Y + (rect.H - h) / 2, rect.X + (rect.W + w) / 2, rect.Y + (rect.H + h) / 2);
+        dc.DrawBitmap(bitmap, dest, opacity, Vortice.Direct2D1.BitmapInterpolationMode.Linear, null);
+    }
+
     /// <summary>Dibuja la imagen recortada con esquinas redondeadas, rellenando el rectángulo.</summary>
     public static void DrawRounded(ID2D1DeviceContext dc, ID2D1Bitmap bitmap, RectF rect, float radius)
     {

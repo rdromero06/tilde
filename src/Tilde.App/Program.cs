@@ -19,6 +19,8 @@ internal static class Program
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
             Log.Error("Excepción no controlada", e.ExceptionObject as Exception);
         Strings.Spanish = Language.IsSpanishUi();
+        // OLE es necesario para arrastrar y soltar (estante) en este hilo de interfaz.
+        Tilde.Platform.Interop.Native.OleInitialize(0);
         Log.Info($"Tilde {TildeApp.Version} iniciado");
 
         try
