@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Interop con Windows: Win32 (LibraryImport) y, desde la fase 2, WinRT. -->
+  <ItemGroup>
+    <ProjectReference Include="..\Tilde.Core\Tilde.Core.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,12 @@
+# Compilación
+bin/
+obj/
+artifacts/
+publish/
+*.user
+.vs/
+.vscode/
+*.binlog
+# Datos locales (nunca al repo)
+*.log
+settings.json

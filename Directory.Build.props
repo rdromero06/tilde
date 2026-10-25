@@ -1,0 +1,21 @@
+<Project>
+  <!-- Propiedades comunes a todos los proyectos de la solución. -->
+  <PropertyGroup>
+    <!-- Compilamos contra el SDK de Windows 11 (22H2) pero declaramos 1809 como mínimo:
+         el analizador CA1416 avisa si usamos por error una API más nueva. -->
+    <TargetFramework>net10.0-windows10.0.22621.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Todo el código debe ser compatible con Native AOT (sin reflexión dinámica). -->
+    <IsAotCompatible>true</IsAotCompatible>
+    <!-- Sin ICU: ahorra varios MB de RAM. Los formatos de fecha/hora los da Windows. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <Version>0.1.0</Version>
+    <Product>Tilde</Product>
+    <Copyright>© 2026 Tilde</Copyright>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>

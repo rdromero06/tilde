@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Ejecutable del notch (Tilde.exe), publicado con Native AOT. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>Tilde</AssemblyName>
+    <RootNamespace>Tilde.App</RootNamespace>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\..\assets\Tilde.ico</ApplicationIcon>
+
+    <!-- Native AOT: un .exe nativo, arranque instantáneo y sin JIT (menos RAM). -->
+    <PublishAot>true</PublishAot>
+    <OptimizationPreference>Size</OptimizationPreference>
+    <!-- GC de estación sin hilo concurrente: un hilo menos y menos memoria reservada. -->
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <EventSourceSupport>false</EventSourceSupport>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Tilde.Core\Tilde.Core.csproj" />
+    <ProjectReference Include="..\Tilde.Platform\Tilde.Platform.csproj" />
+    <ProjectReference Include="..\Tilde.Render\Tilde.Render.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Copia de respaldo del icono junto al .exe (para la bandeja si no se encuentra el recurso). -->
+    <None Include="..\..\assets\Tilde.ico" Link="Tilde.ico" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Lógica pura: ajustes, almacenamiento, métricas. Sin UI ni interop. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Tilde.Core.Tests" />
+  </ItemGroup>
+</Project>
