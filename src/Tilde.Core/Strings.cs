@@ -20,6 +20,17 @@ public static class Strings
 
     public static string ComingInPhase(int phase) => T($"Llega en la fase {phase}", $"Coming in phase {phase}");
 
+    // Música
+    public static string NothingPlaying => T("Nada sonando", "Nothing playing");
+    public static string NothingPlayingHint => T("Reproduce algo en cualquier app", "Play something in any app");
+    public static string UnknownArtist => T("Artista desconocido", "Unknown artist");
+    public static string LyricsLoading => T("Buscando la letra…", "Looking for lyrics…");
+    public static string LyricsNotFound => T("No hay letra para esta canción", "No lyrics for this song");
+    public static string LyricsPlainOnly => T("Solo hay letra sin sincronizar", "Only unsynced lyrics available");
+    public static string LyricsInstrumental => T("♪  Instrumental", "♪  Instrumental");
+    public static string LyricsUnavailable => T("Sin conexión con LRCLIB", "Can't reach LRCLIB");
+    public static string LyricsDisabled => T("Búsqueda de letras desactivada", "Lyrics lookup is off");
+
     // Bandeja del sistema
     public static string TrayStartWithWindows => T("Iniciar con Windows", "Start with Windows");
     public static string TrayMascot => T("Mascota", "Mascot");

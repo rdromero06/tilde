@@ -58,6 +58,7 @@ internal sealed class NotchView : IDisposable
 
     private string _time = string.Empty;
     private string _date = string.Empty;
+    private PillContent _pill = new(string.Empty, null, false);
     private float _collapsedWidth;
     private int _active;
     private bool _isExpanded;
@@ -134,6 +135,7 @@ internal sealed class NotchView : IDisposable
 
         var slot = EnsureSlot(_active);
         slot.Opacity.Set(1);
+        UpdatePageVisibility();
 
         _target.SetRoot(_root);
         _dev.Commit();
@@ -151,7 +153,7 @@ internal sealed class NotchView : IDisposable
         }
     }
 
-    /// <summary>Actualiza el reloj y la fecha (y la anchura de la píldora si cambia).</summary>
+    /// <summary>Actualiza la hora y la fecha de la cabecera del notch abierto.</summary>
     public void SetClock(string time, string date)
     {
         if (time == _time && date == _date)
@@ -160,20 +162,64 @@ internal sealed class NotchView : IDisposable
         }
         _time = time;
         _date = date;
-        float width = _geo.CollapsedWidthDip(Text.Measure(_theme.DWrite, time, _theme.Clock));
+        DrawHeader();
+        _dev.Commit();
+    }
+
+    /// <summary>
+    /// Contenido de la píldora cerrada: la hora o, si suena música con letra, la línea actual
+    /// con la carátula. La píldora se ensancha o estrecha (animada) según lo que mida el texto.
+    /// </summary>
+    public void SetPill(PillContent pill)
+    {
+        if (pill == _pill)
+        {
+            return;
+        }
+        bool textChanged = pill.Text != _pill.Text;
+        _pill = pill;
+        float f = _geo.F;
+        float art = pill.Art is null ? 0 : PillArtSize + PillArtGap;
+        float maxText = _geo.ExpandedWidthDip - 2 * NotchMetricsPadding - art;
+        float textWidth = MathF.Min(Text.Measure(_theme.DWrite, pill.Text, _theme.Clock), maxText);
+        float width = MathF.Min(_geo.CollapsedWidthDip(textWidth + art), _geo.ExpandedWidthDip);
         bool widthChanged = MathF.Abs(width - _collapsedWidth) > 0.5f;
         _collapsedWidth = width;
 
-        _clock.Draw(dc => Text.Draw(dc, _theme.DWrite, _time, _theme.Clock,
-            new RectF(0, 0, _clock.WidthDip, _clock.HeightDip), _theme.Primary, TextAlignment.Center));
-        DrawHeader();
-
-        if (widthChanged && !_isExpanded)
+        _clock.Draw(dc =>
         {
-            AnimateShape(CollapsedShape(), CollapseDuration, Ease.OutCubic);
+            float contentWidth = textWidth + art;
+            float x = (_clock.WidthDip - contentWidth) / 2;
+            if (_pill.Art is { } bitmap)
+            {
+                float y = (_clock.HeightDip - PillArtSize) / 2;
+                Images.DrawRounded(dc, bitmap, new RectF(x, y, PillArtSize, PillArtSize), 4f * f);
+                x += art;
+            }
+            Text.Draw(dc, _theme.DWrite, _pill.Text, _theme.Clock, new RectF(x, 0, textWidth + 1, _clock.HeightDip), _theme.Primary);
+        });
+
+        if (!_isExpanded)
+        {
+            if (widthChanged)
+            {
+                AnimateShape(CollapsedShape(), CollapseDuration, Ease.OutCubic);
+            }
+            if (textChanged && pill.IsLyric && !_geo.Minimal)
+            {
+                // Cada línea nueva aparece con un fundido breve.
+                _clockOpacity.Set(0.25f);
+                _clockOpacity.AnimateTo(_dev, 1, 0.28, Ease.OutCubic);
+            }
         }
         _dev.Commit();
     }
+
+    private float PillArtSize => 18f * _geo.F;
+
+    private float PillArtGap => 8f * _geo.F;
+
+    private float NotchMetricsPadding => Tilde.Core.Layout.NotchMetrics.CollapsedPadding * _geo.F;
 
     /// <summary>Abre o cierra el notch.</summary>
     public void SetExpanded(bool expanded, bool animate = true)
@@ -210,6 +256,7 @@ internal sealed class NotchView : IDisposable
         {
             SetBarHover(false, commit: false);
         }
+        UpdatePageVisibility();
         _dev.Commit();
     }
 
@@ -235,6 +282,7 @@ internal sealed class NotchView : IDisposable
         next.OffsetX.AnimateTo(_dev, 0, 0.32, Ease.OutCubic);
         _active = index;
         DrawBar();
+        UpdatePageVisibility();
         _dev.Commit();
     }
 
@@ -277,23 +325,18 @@ internal sealed class NotchView : IDisposable
         return HitNone;
     }
 
-    /// <summary>Redibuja una página cuyo contenido ha cambiado.</summary>
-    public void InvalidatePage(int index)
-    {
-        if (_slots[index] is { } slot)
-        {
-            DrawPage(index, slot.Surface);
-            _dev.Commit();
-        }
-    }
-
     public void Dispose()
     {
         _target.SetRoot(null);
         _dev.Commit();
-        foreach (var slot in _slots)
+        for (int i = 0; i < _slots.Length; i++)
         {
-            slot?.Surface.Dispose();
+            if (_slots[i] is { } slot)
+            {
+                _pages[i].Detach();
+                slot.Context.Dispose();
+                slot.Container.Dispose();
+            }
         }
         _dots.Dispose();
         _icons.Dispose();
@@ -402,18 +445,37 @@ internal sealed class NotchView : IDisposable
         {
             return existing;
         }
-        var surface = new DrawingSurface(_g);
-        surface.Resize(_geo.Content.W, _geo.Content.H, _geo.Scale);
-        var slot = new PageSlot(surface,
-            new AnimatedValue(v => surface.Visual.SetOpacity(v), a => surface.Visual.SetOpacity(a), 0),
-            new AnimatedValue(v => surface.Visual.SetOffsetX(v), a => surface.Visual.SetOffsetX(a), 0));
-        DrawPage(index, surface);
-        _pageHost.AddVisual(surface.Visual, false, null);
-        return _slots[index] = slot;
+        var container = _g.CreateVisual();
+        _pageHost.AddVisual(container, false, null);
+        var context = new PageContext(_g, _theme, _geo.Content.W, _geo.Content.H, _geo.Scale, container);
+        var slot = new PageSlot(container, context,
+            new AnimatedValue(v => container.SetOpacity(v), a => container.SetOpacity(a), 0),
+            new AnimatedValue(v => container.SetOffsetX(v), a => container.SetOffsetX(a), 0));
+        _slots[index] = slot;
+        _pages[index].Attach(context);
+        return slot;
     }
 
-    private void DrawPage(int index, DrawingSurface surface) =>
-        surface.Draw(dc => _pages[index].Draw(dc, _theme, surface.WidthDip, surface.HeightDip));
+    /// <summary>Avisa a cada página de si se ve (para que paren sus temporizadores si no).</summary>
+    private void UpdatePageVisibility()
+    {
+        for (int i = 0; i < _pages.Count; i++)
+        {
+            if (_slots[i] is not null)
+            {
+                _pages[i].SetVisible(_isExpanded && i == _active);
+            }
+        }
+    }
 
-    private sealed record PageSlot(DrawingSurface Surface, AnimatedValue Opacity, AnimatedValue OffsetX);
+    /// <summary>Página activa (para enviarle el ratón y el teclado).</summary>
+    public Page ActivePage => _pages[_active];
+
+    private sealed record PageSlot(IDCompositionVisual3 Container, PageContext Context, AnimatedValue Opacity, AnimatedValue OffsetX);
+}
+
+/// <summary>Lo que muestra la píldora cerrada.</summary>
+internal sealed record PillContent(string Text, Vortice.Direct2D1.ID2D1Bitmap? Art, bool IsLyric)
+{
+    public static PillContent Clock(string time) => new(time, null, false);
 }

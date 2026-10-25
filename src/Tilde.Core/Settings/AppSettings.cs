@@ -33,6 +33,15 @@ public sealed class AppSettings
     /// <summary>Mostrar la mascota tras un rato de inactividad (fase 5).</summary>
     public bool MascotEnabled { get; set; } = true;
 
+    /// <summary>Buscar letras en LRCLIB (envía solo título, artista y duración).</summary>
+    public bool LyricsOnline { get; set; } = true;
+
+    /// <summary>Con el notch cerrado, mostrar la línea actual de la letra en la píldora.</summary>
+    public bool LyricsInPill { get; set; } = true;
+
+    /// <summary>La página de música muestra la vista de letras (true) o el reproductor (false).</summary>
+    public bool LyricsView { get; set; }
+
     /// <summary>Última página visitada, para reabrir donde lo dejaste.</summary>
     public int LastPage { get; set; }
 }

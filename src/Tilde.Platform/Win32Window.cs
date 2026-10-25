@@ -19,7 +19,7 @@ public abstract unsafe class Win32Window : IDisposable
 
     protected static nint ModuleHandle { get; } = GetModuleHandleW(0);
 
-    protected void CreateWindow(string className, uint exStyle, uint style, int x, int y, int width, int height)
+    protected void CreateWindow(string className, uint exStyle, uint style, int x, int y, int width, int height, nint parent = 0)
     {
         if (RegisteredClasses.Add(className))
         {
@@ -41,7 +41,7 @@ public abstract unsafe class Win32Window : IDisposable
         }
 
         _self = GCHandle.Alloc(this);
-        Handle = CreateWindowExW(exStyle, className, "Tilde", style, x, y, width, height, 0, 0, ModuleHandle, GCHandle.ToIntPtr(_self));
+        Handle = CreateWindowExW(exStyle, className, "Tilde", style, x, y, width, height, parent, 0, ModuleHandle, GCHandle.ToIntPtr(_self));
         if (Handle == 0)
         {
             throw new InvalidOperationException($"CreateWindowEx falló ({Marshal.GetLastPInvokeError()})");

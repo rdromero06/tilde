@@ -1,3 +1,4 @@
+using Tilde.App.Music;
 using Tilde.App.Pages;
 using Tilde.Core;
 using Tilde.Core.Layout;
@@ -37,6 +38,7 @@ internal sealed unsafe class NotchWindow : Win32Window
     private readonly GraphicsDevice _g;
     private readonly SettingsStore _settings;
     private readonly IReadOnlyList<Page> _pages;
+    private readonly MusicController _music;
     private readonly FullscreenWatcher _fullscreen;
     private IDCompositionTarget _target;
     private NotchView? _view;
@@ -50,12 +52,15 @@ internal sealed unsafe class NotchWindow : Win32Window
     private int _wheelAccumulator;
     private long _wheelBlockedUntil;
     private nint _previousForeground;
+    private bool _capturing;
+    private bool _pointerInContent;
 
-    public NotchWindow(GraphicsDevice graphics, SettingsStore settings, IReadOnlyList<Page> pages)
+    public NotchWindow(GraphicsDevice graphics, SettingsStore settings, IReadOnlyList<Page> pages, MusicController music)
     {
         _g = graphics;
         _settings = settings;
         _pages = pages;
+        _music = music;
         _page = Math.Clamp(settings.Current.LastPage, 0, pages.Count - 1);
 
         CreateWindow("TildeNotch",
@@ -67,11 +72,11 @@ internal sealed unsafe class NotchWindow : Win32Window
         _target = _g.CreateTarget(Handle);
         Rebuild();
 
-        for (int i = 0; i < pages.Count; i++)
-        {
-            int index = i;
-            pages[i].Invalidated += () => Render(() => _view?.InvalidatePage(index));
-        }
+        // La píldora muestra la línea de la letra mientras suena música.
+        music.LineChanged += UpdatePill;
+        music.PlaybackChanged += UpdatePill;
+        music.TrackChanged += UpdatePill;
+        music.ArtChanged += UpdatePill;
 
         _fullscreen = new FullscreenWatcher(Handle, WM_APP_APPBAR, () => _monitor);
         _fullscreen.Changed += _ => ApplyVisibility();
@@ -79,7 +84,12 @@ internal sealed unsafe class NotchWindow : Win32Window
         ApplyVisibility();
         UpdateClock();
 #if DEBUG
-        if (Environment.GetEnvironmentVariable("TILDE_DEBUG_DEMO") == "1")
+        if (Environment.GetEnvironmentVariable("TILDE_DEBUG_DEMO") == "hold")
+        {
+            _demoStep = 100; // Solo abrir el notch y dejarlo abierto.
+            Expand();
+        }
+        else if (Environment.GetEnvironmentVariable("TILDE_DEBUG_DEMO") == "1")
         {
             SetTimer(Handle, TimerDemo, 1000, 0);
         }
@@ -92,6 +102,7 @@ internal sealed unsafe class NotchWindow : Win32Window
     /// <summary>Vuelve a leer los ajustes y reconstruye lo que haga falta.</summary>
     public void ApplySettings()
     {
+        _music.ApplySettings();
         Render(Rebuild);
         ApplyVisibility();
     }
@@ -118,12 +129,32 @@ internal sealed unsafe class NotchWindow : Win32Window
 
             case WM_MOUSELEAVE:
                 _trackingMouse = false;
-                SetTimer(Handle, TimerCollapse, CollapseDelayMs, 0);
+                if (!_capturing)
+                {
+                    LeaveContent();
+                    SetTimer(Handle, TimerCollapse, CollapseDelayMs, 0);
+                }
+                return 0;
+
+            case WM_LBUTTONDOWN:
+                OnPointerDown(LoWord(lParam), HiWord(lParam));
                 return 0;
 
             case WM_LBUTTONUP:
                 OnClick(LoWord(lParam), HiWord(lParam));
                 return 0;
+
+            case WM_CAPTURECHANGED:
+                _capturing = false;
+                return 0;
+
+            case WM_SETCURSOR:
+                if (LoWord(lParam) == 1 && IsOverClickable()) // HTCLIENT
+                {
+                    SetCursor(LoadCursorW(0, IDC_HAND));
+                    return 1;
+                }
+                break;
 
             case WM_MOUSEWHEEL:
             case WM_MOUSEHWHEEL:
@@ -205,7 +236,62 @@ internal sealed unsafe class NotchWindow : Win32Window
             return;
         }
         var (lx, ly) = ToLocal(x, y);
+        if (_capturing)
+        {
+            Render(() => _view?.ActivePage.OnPointerMove(lx - _geo.Content.X, ly - _geo.Content.Y));
+            return;
+        }
         Render(() => _view?.SetBarHover(_view.IsOverBar(lx, ly)));
+        if (_geo.Content.Contains(lx, ly))
+        {
+            _pointerInContent = true;
+            Render(() => _view?.ActivePage.OnPointerMove(lx - _geo.Content.X, ly - _geo.Content.Y));
+        }
+        else
+        {
+            LeaveContent();
+        }
+    }
+
+    private void LeaveContent()
+    {
+        if (_pointerInContent)
+        {
+            _pointerInContent = false;
+            Render(() => _view?.ActivePage.OnPointerLeave());
+        }
+    }
+
+    private void OnPointerDown(int x, int y)
+    {
+        if (!_expanded || _view is null)
+        {
+            return;
+        }
+        ActivateForKeyboard();
+        var (lx, ly) = ToLocal(x, y);
+        if (_geo.Content.Contains(lx, ly) && _view.ActivePage.OnPointerDown(lx - _geo.Content.X, ly - _geo.Content.Y))
+        {
+            // Arrastre (barra de progreso, volumen…): seguimos recibiendo el ratón aunque salga.
+            SetCapture(Handle);
+            _capturing = true;
+        }
+    }
+
+    /// <summary>¿Hay algo clicable bajo el cursor? (para mostrar la mano).</summary>
+    private bool IsOverClickable()
+    {
+        if (!_expanded || _view is null || !GetCursorPos(out var point))
+        {
+            return false;
+        }
+        ScreenToClient(Handle, ref point);
+        var (lx, ly) = ToLocal(point.X, point.Y);
+        if (_view.HitTestBar(lx, ly) != NotchView.HitNone)
+        {
+            return true;
+        }
+        return _geo.Content.Contains(lx, ly) && _view.ActivePage.IsClickable(lx - _geo.Content.X, ly - _geo.Content.Y);
     }
 
     private void OnClick(int x, int y)
@@ -214,8 +300,20 @@ internal sealed unsafe class NotchWindow : Win32Window
         {
             return;
         }
-        ActivateForKeyboard();
         var (lx, ly) = ToLocal(x, y);
+        if (_capturing)
+        {
+            ReleaseCapture();
+            Render(() => _view?.ActivePage.OnPointerUp(lx - _geo.Content.X, ly - _geo.Content.Y));
+            // Si el arrastre terminó fuera del notch, volvemos a vigilar la salida del ratón.
+            TrackMouseLeave();
+            return;
+        }
+        if (_geo.Content.Contains(lx, ly))
+        {
+            Render(() => _view?.ActivePage.OnPointerUp(lx - _geo.Content.X, ly - _geo.Content.Y));
+            return;
+        }
         int hit = _view.HitTestBar(lx, ly);
         if (hit >= 0)
         {
@@ -249,8 +347,19 @@ internal sealed unsafe class NotchWindow : Win32Window
         }
     }
 
+    private void TrackMouseLeave()
+    {
+        var tme = new TRACKMOUSEEVENT { cbSize = (uint)sizeof(TRACKMOUSEEVENT), dwFlags = TME_LEAVE, hwndTrack = Handle };
+        TrackMouseEvent(ref tme);
+        _trackingMouse = true;
+    }
+
     private void OnKey(int key)
     {
+        if (_expanded && _view is not null && _view.ActivePage.OnKey(key))
+        {
+            return;
+        }
         switch (key)
         {
             case VK_LEFT: GoToPage(_page - 1); break;
@@ -383,10 +492,7 @@ internal sealed unsafe class NotchWindow : Win32Window
     {
         var now = DateTime.Now;
         Render(() => _view?.SetClock(RegionalFormat.ShortTime(now), RegionalFormat.DayAndMonth(now)));
-        if (!_expanded)
-        {
-            UpdateRegion(); // La píldora puede haber cambiado de ancho (p. ej. 9:59 → 10:00).
-        }
+        UpdatePill();
         // Próximo aviso justo después del cambio de minuto: un único despertar por minuto.
         uint ms = (uint)(60_000 - (now.Second * 1000 + now.Millisecond)) + 25;
         SetTimer(Handle, TimerClock, ms, 0);
@@ -413,6 +519,28 @@ internal sealed unsafe class NotchWindow : Win32Window
         }
     }
 #endif
+
+    /// <summary>
+    /// Decide qué muestra la píldora: la línea actual de la letra (con la carátula) si suena
+    /// música con letra sincronizada, o la hora en caso contrario.
+    /// </summary>
+    private void UpdatePill()
+    {
+        PillContent pill;
+        if (_settings.Current.LyricsInPill && !_settings.Current.MinimalNotch && _music.CurrentLineText is { } line)
+        {
+            pill = new PillContent(line.Length > 0 ? line : "♪", _music.GetArt(), IsLyric: true);
+        }
+        else
+        {
+            pill = PillContent.Clock(RegionalFormat.ShortTime(DateTime.Now));
+        }
+        Render(() => _view?.SetPill(pill));
+        if (!_expanded)
+        {
+            UpdateRegion(); // La píldora puede haber cambiado de ancho (p. ej. 9:59 → 10:00).
+        }
+    }
 
     // ── Geometría y composición ──
 
@@ -444,6 +572,7 @@ internal sealed unsafe class NotchWindow : Win32Window
         _view = new NotchView(_g, _target, _geo, _theme, _pages, _page, _expanded);
         var now = DateTime.Now;
         _view.SetClock(RegionalFormat.ShortTime(now), RegionalFormat.DayAndMonth(now));
+        UpdatePill();
         UpdateRegion();
     }
 
@@ -489,6 +618,7 @@ internal sealed unsafe class NotchWindow : Win32Window
             _view = null;
             _theme = null;
             _g.Recreate();
+            _music.ResetDeviceResources();
             _target = _g.CreateTarget(Handle);
             Rebuild();
         }

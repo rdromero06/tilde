@@ -32,6 +32,11 @@ internal sealed class Theme : IDisposable
         HeaderTime = Text.Format(DWrite, display, 12.5f * F, FontWeight.SemiBold);
         Title = Text.Format(DWrite, display, 15f * F, FontWeight.SemiBold);
         Caption = Text.Format(DWrite, text, 12f * F);
+        Small = Text.Format(DWrite, text, 11f * F);
+        TrackTitle = Text.Format(DWrite, display, 14.5f * F, FontWeight.SemiBold);
+        TrackArtist = Text.Format(DWrite, text, 12.5f * F);
+        Lyric = Text.Format(DWrite, display, 14f * F, FontWeight.SemiBold);
+        Lyric.WordWrapping = WordWrapping.Wrap;
         Icons = new IconSet(device.D2DFactory);
     }
 
@@ -61,6 +66,15 @@ internal sealed class Theme : IDisposable
 
     public IDWriteTextFormat Caption { get; }
 
+    public IDWriteTextFormat Small { get; }
+
+    public IDWriteTextFormat TrackTitle { get; }
+
+    public IDWriteTextFormat TrackArtist { get; }
+
+    /// <summary>Líneas de letra (con ajuste de línea).</summary>
+    public IDWriteTextFormat Lyric { get; }
+
     public IconSet Icons { get; }
 
     public void Dispose()
@@ -76,6 +90,10 @@ internal sealed class Theme : IDisposable
         HeaderTime.Dispose();
         Title.Dispose();
         Caption.Dispose();
+        Small.Dispose();
+        TrackTitle.Dispose();
+        TrackArtist.Dispose();
+        Lyric.Dispose();
         Icons.Dispose();
     }
 }

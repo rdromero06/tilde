@@ -147,6 +147,7 @@ public static unsafe partial class Native
     public const uint WM_CLOSE = 0x0010;
     public const uint WM_SETTINGCHANGE = 0x001A;
     public const uint WM_TIMECHANGE = 0x001E;
+    public const uint WM_SETCURSOR = 0x0020;
     public const uint WM_MOUSEACTIVATE = 0x0021;
     public const uint WM_DISPLAYCHANGE = 0x007E;
     public const uint WM_NCCREATE = 0x0081;
@@ -159,6 +160,7 @@ public static unsafe partial class Native
     public const uint WM_MOUSEWHEEL = 0x020A;
     public const uint WM_MOUSEHWHEEL = 0x020E;
     public const uint WM_POWERBROADCAST = 0x0218;
+    public const uint WM_CAPTURECHANGED = 0x0215;
     public const uint WM_MOUSELEAVE = 0x02A3;
     public const uint WM_DPICHANGED = 0x02E0;
     public const uint WM_USER = 0x0400;
@@ -173,6 +175,7 @@ public static unsafe partial class Native
 
     // SetWindowPos / ShowWindow
     public static readonly nint HWND_TOPMOST = -1;
+    public static readonly nint HWND_MESSAGE = -3;
     public const uint SWP_NOSIZE = 0x0001;
     public const uint SWP_NOMOVE = 0x0002;
     public const uint SWP_NOACTIVATE = 0x0010;
@@ -192,6 +195,8 @@ public static unsafe partial class Native
     public const uint LR_LOADFROMFILE = 0x0010;
     public const int SM_CXSMICON = 49;
     public const nint IDC_ARROW = 32512;
+    public const nint IDC_HAND = 32649;
+    public const int VK_SPACE = 0x20;
     public const uint MB_ICONINFORMATION = 0x00000040;
 
     // Bandeja del sistema
@@ -309,6 +314,27 @@ public static unsafe partial class Native
     public static partial nint LoadCursorW(nint instance, nint name);
 
     [LibraryImport("user32.dll")]
+    public static partial nint SetCursor(nint cursor);
+
+    [LibraryImport("user32.dll")]
+    public static partial nint SetCapture(nint hwnd);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool ReleaseCapture();
+
+    [LibraryImport("user32.dll")]
+    public static partial nint GetCapture();
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool GetCursorPos(out POINT point);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool ScreenToClient(nint hwnd, ref POINT point);
+
+    [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool DestroyIcon(nint icon);
 
@@ -388,6 +414,12 @@ public static unsafe partial class Native
 
     [LibraryImport("shell32.dll")]
     public static partial nuint SHAppBarMessage(uint message, ref APPBARDATA data);
+
+    // ── ole32 ──
+    public const uint CLSCTX_ALL = 0x17;
+
+    [LibraryImport("ole32.dll")]
+    public static partial int CoCreateInstance(in Guid clsid, nint outer, uint context, in Guid iid, out nint instance);
 
     // ── kernel32 ──
     [LibraryImport("kernel32.dll")]

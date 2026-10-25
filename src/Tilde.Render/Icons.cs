@@ -14,6 +14,13 @@ public enum IconKind
     Shelf,
     Spark,
     Settings,
+    Play,
+    Pause,
+    Previous,
+    Next,
+    Volume,
+    VolumeMuted,
+    Lyrics,
 }
 
 /// <summary>
@@ -107,6 +114,57 @@ public sealed class IconSet : IDisposable
             (Ellipse(factory, 9f, 12f, 2.3f, 2.3f), true),
             (Ellipse(factory, 13.5f, 17f, 2.3f, 2.3f), true),
         ];
+
+        AddMediaIcons(factory);
+    }
+
+    private void AddMediaIcons(ID2D1Factory1 factory)
+    {
+        // Reproducir / pausa / anterior / siguiente: formas rellenas con esquinas suaves.
+        _icons[IconKind.Play] =
+        [
+            (Filled(factory, p => p.Move(8f, 5.2f).Line(19f, 12f).Line(8f, 18.8f).Close()), true),
+            (Path(factory, p => p.Move(8f, 5.2f).Line(19f, 12f).Line(8f, 18.8f).Close()), false),
+        ];
+        _icons[IconKind.Pause] =
+        [
+            (Rounded(factory, 6.5f, 5f, 4f, 14f, 1.4f), true),
+            (Rounded(factory, 13.5f, 5f, 4f, 14f, 1.4f), true),
+        ];
+        _icons[IconKind.Previous] =
+        [
+            (Filled(factory, p => p.Move(18f, 6f).Line(9.5f, 12f).Line(18f, 18f).Close()), true),
+            (Path(factory, p => p.Move(18f, 6f).Line(9.5f, 12f).Line(18f, 18f).Close().Move(6.5f, 6f).Line(6.5f, 18f)), false),
+        ];
+        _icons[IconKind.Next] =
+        [
+            (Filled(factory, p => p.Move(6f, 6f).Line(14.5f, 12f).Line(6f, 18f).Close()), true),
+            (Path(factory, p => p.Move(6f, 6f).Line(14.5f, 12f).Line(6f, 18f).Close().Move(17.5f, 6f).Line(17.5f, 18f)), false),
+        ];
+
+        // Altavoz con ondas, y tachado para silencio.
+        var speaker = Path(factory, p => p.Move(4.5f, 9.5f).Line(8f, 9.5f).Line(12f, 5.5f).Line(12f, 18.5f).Line(8f, 14.5f).Line(4.5f, 14.5f).Close());
+        _icons[IconKind.Volume] =
+        [
+            (speaker, false),
+            (Path(factory, p => p.Move(15.2f, 9.2f).Curve(16.6f, 10.8f, 16.6f, 13.2f, 15.2f, 14.8f)
+                                 .Move(17.8f, 6.8f).Curve(20.6f, 9.8f, 20.6f, 14.2f, 17.8f, 17.2f)), false),
+        ];
+        _icons[IconKind.VolumeMuted] =
+        [
+            (Path(factory, p => p.Move(4.5f, 9.5f).Line(8f, 9.5f).Line(12f, 5.5f).Line(12f, 18.5f).Line(8f, 14.5f).Line(4.5f, 14.5f).Close()), false),
+            (Path(factory, p => p.Move(15.5f, 9.5f).Line(20.5f, 14.5f).Move(20.5f, 9.5f).Line(15.5f, 14.5f)), false),
+        ];
+
+        // Letras: bocadillo con líneas de texto.
+        _icons[IconKind.Lyrics] =
+        [
+            (Path(factory, p => p.Move(5f, 5f).Line(19f, 5f).Curve(19.8f, 5f, 20.4f, 5.6f, 20.4f, 6.4f).Line(20.4f, 15f)
+                                 .Curve(20.4f, 15.8f, 19.8f, 16.4f, 19f, 16.4f).Line(10f, 16.4f).Line(6.5f, 19.5f).Line(6.5f, 16.4f)
+                                 .Line(5f, 16.4f).Curve(4.2f, 16.4f, 3.6f, 15.8f, 3.6f, 15f).Line(3.6f, 6.4f)
+                                 .Curve(3.6f, 5.6f, 4.2f, 5f, 5f, 5f).Close()
+                                 .Move(7.5f, 9f).Line(16.5f, 9f).Move(7.5f, 12.4f).Line(13.5f, 12.4f)), false),
+        ];
     }
 
     /// <summary>Dibuja un icono con su esquina superior izquierda en (x, y) y el lado indicado en DIP.</summary>
@@ -143,10 +201,16 @@ public sealed class IconSet : IDisposable
     private static ID2D1Geometry Ellipse(ID2D1Factory1 f, float cx, float cy, float rx, float ry) =>
         f.CreateEllipseGeometry(new Vortice.Direct2D1.Ellipse(new Vector2(cx, cy), rx, ry));
 
-    private static ID2D1Geometry Path(ID2D1Factory1 f, Action<PathBuilder> build)
+    private static ID2D1Geometry Rounded(ID2D1Factory1 f, float x, float y, float w, float h, float r) =>
+        f.CreateRoundedRectangleGeometry(new RoundedRectangle(new Vortice.RawRectF(x, y, x + w, y + h), r, r));
+
+    /// <summary>Trazado relleno (las figuras se abren como «Filled»).</summary>
+    private static ID2D1Geometry Filled(ID2D1Factory1 f, Action<PathBuilder> build) => Path(f, build, filled: true);
+
+    private static ID2D1Geometry Path(ID2D1Factory1 f, Action<PathBuilder> build, bool filled = false)
     {
         var geometry = f.CreatePathGeometry();
-        using (var builder = new PathBuilder(geometry.Open()))
+        using (var builder = new PathBuilder(geometry.Open(), filled))
         {
             build(builder);
         }
@@ -154,7 +218,7 @@ public sealed class IconSet : IDisposable
     }
 
     /// <summary>Constructor de trazados al estilo SVG (Move, Line, Curve, Arc, Close).</summary>
-    private sealed class PathBuilder(ID2D1GeometrySink sink) : IDisposable
+    private sealed class PathBuilder(ID2D1GeometrySink sink, bool filled = false) : IDisposable
     {
         private bool _open;
         private Vector2 _last;
@@ -162,7 +226,7 @@ public sealed class IconSet : IDisposable
         public PathBuilder Move(float x, float y)
         {
             EndOpenFigure();
-            sink.BeginFigure(new Vector2(x, y), FigureBegin.Hollow);
+            sink.BeginFigure(new Vector2(x, y), filled ? FigureBegin.Filled : FigureBegin.Hollow);
             _open = true;
             _last = new Vector2(x, y);
             return this;

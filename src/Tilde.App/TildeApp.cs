@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Tilde.App.Music;
 using Tilde.App.Notch;
 using Tilde.App.Pages;
 using Tilde.Core;
@@ -22,14 +23,20 @@ internal sealed class TildeApp : IDisposable
     private const int CmdAbout = 5;
     private const int CmdExit = 6;
 
+    private readonly UiDispatcher _dispatcher;
     private readonly SettingsStore _settings;
     private readonly GraphicsDevice _graphics;
+    private readonly MusicController _music;
     private readonly NotchWindow _notch;
     private readonly TrayIcon _tray;
     private readonly nint _icon;
 
     public TildeApp()
     {
+        // Todo lo asíncrono (multimedia, red) vuelve al hilo de interfaz tras cada await.
+        _dispatcher = new UiDispatcher();
+        SynchronizationContext.SetSynchronizationContext(new UiSynchronizationContext(_dispatcher));
+
         _settings = new SettingsStore(AppPaths.SettingsFile);
         if (!File.Exists(AppPaths.SettingsFile))
         {
@@ -37,7 +44,8 @@ internal sealed class TildeApp : IDisposable
         }
 
         _graphics = new GraphicsDevice();
-        _notch = new NotchWindow(_graphics, _settings, PageCatalog.Create());
+        _music = new MusicController(_settings, _graphics, Version);
+        _notch = new NotchWindow(_graphics, _settings, PageCatalog.Create(_music, _settings), _music);
         _notch.SettingsRequested += OpenSettings;
 
         // Cambios en settings.json hechos desde fuera: se aplican en el hilo de interfaz.
@@ -47,6 +55,8 @@ internal sealed class TildeApp : IDisposable
         _icon = AppIcon.LoadSmall();
         _tray = new TrayIcon(_icon, "Tilde");
         _tray.Clicked += ShowTrayMenu;
+
+        _ = _music.StartAsync();
     }
 
     public static string Version => typeof(TildeApp).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
@@ -66,8 +76,10 @@ internal sealed class TildeApp : IDisposable
     {
         _tray.Dispose(); // Importante: si no, queda un icono «fantasma» en la bandeja.
         _notch.Dispose();
+        _music.Dispose();
         _graphics.Dispose();
         _settings.Dispose();
+        _dispatcher.Dispose();
         if (_icon != 0)
         {
             DestroyIcon(_icon);
