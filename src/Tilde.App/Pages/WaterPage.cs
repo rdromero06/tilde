@@ -14,11 +14,17 @@ namespace Tilde.App.Pages;
 /// </summary>
 internal sealed class WaterPage : CanvasPage
 {
+    /// <summary>Tiempo que se mantiene la confirmación de «poner a cero» antes de desaparecer.</summary>
+    private static readonly TimeSpan ConfirmTimeout = TimeSpan.FromSeconds(4);
+
     private readonly WaterService _service;
+    private readonly UiTimer _confirmTimer;
+    private bool _confirmReset;
 
     public WaterPage(WaterService service)
     {
         _service = service;
+        _confirmTimer = new UiTimer(() => SetConfirm(false));
         service.Changed += Redraw;
     }
 
@@ -32,8 +38,41 @@ internal sealed class WaterPage : CanvasPage
         {
             case "drink": _service.Drink(); break;
             case "undo": _service.Undo(); break;
+            case "reset": SetConfirm(true); break; // Primer clic: pide confirmación.
+            case "reset-cancel": SetConfirm(false); break;
+            case "reset-confirm":
+                SetConfirm(false);
+                _service.ResetToday();
+                break;
             case "glass": _service.CycleGlass(); Redraw(); break;
             case "goal": _service.CycleGoal(); break;
+        }
+    }
+
+    protected override void OnVisibilityChanged(bool visible)
+    {
+        if (!visible)
+        {
+            SetConfirm(false);
+        }
+    }
+
+    /// <summary>
+    /// Poner el día a cero va en dos pasos para no hacerlo sin querer: el primer clic convierte el
+    /// botón en «¿Poner a cero?» durante unos segundos y el segundo lo confirma. Aun así se puede
+    /// deshacer con el botón de deshacer.
+    /// </summary>
+    private void SetConfirm(bool confirm)
+    {
+        _confirmTimer.Stop();
+        if (confirm)
+        {
+            _confirmTimer.Start(ConfirmTimeout);
+        }
+        if (confirm != _confirmReset)
+        {
+            _confirmReset = confirm;
+            Redraw();
         }
     }
 
@@ -71,12 +110,28 @@ internal sealed class WaterPage : CanvasPage
         }
         Ui.Label(dc, theme, detail, theme.Caption, new RectF(x0, 31f * f, textW, 18f * f), total >= s.GoalMl ? theme.Mint : theme.Secondary);
 
-        // Botones: beber, deshacer y tamaño del vaso.
-        string drink = Strings.WaterDrink("+" + Amounts.Ml(s.GlassMl));
-        var drinkRect = Zone(new RectF(x0, h - 36f * f, Ui.ButtonWidth(theme, drink, icon: true), 28f * f), "drink");
-        Ui.Button(dc, theme, drinkRect, drink, primary: true, IsHover("drink"), IconKind.Water);
-        var undo = Zone(new RectF(drinkRect.Right + 8f * f, drinkRect.Y, 28f * f, 28f * f), "undo");
-        Ui.IconButton(dc, theme, undo, IconKind.Undo, IsHover("undo"), 0.58f, total > 0 ? theme.Secondary : theme.Tertiary);
+        // Botones: beber, deshacer y poner a cero (este último pide confirmación en su lugar).
+        if (_confirmReset)
+        {
+            string confirm = Strings.WaterResetConfirm;
+            var confirmRect = Zone(new RectF(x0, h - 36f * f, Ui.ButtonWidth(theme, confirm, icon: true), 28f * f), "reset-confirm");
+            Ui.Button(dc, theme, confirmRect, confirm, primary: true, IsHover("reset-confirm"), IconKind.Restart);
+            var cancel = Zone(new RectF(confirmRect.Right + 8f * f, confirmRect.Y, 28f * f, 28f * f), "reset-cancel");
+            Ui.IconButton(dc, theme, cancel, IconKind.Close, IsHover("reset-cancel"), 0.55f, theme.Secondary);
+        }
+        else
+        {
+            string drink = Strings.WaterDrink("+" + Amounts.Ml(s.GlassMl));
+            var drinkRect = Zone(new RectF(x0, h - 36f * f, Ui.ButtonWidth(theme, drink, icon: true), 28f * f), "drink");
+            Ui.Button(dc, theme, drinkRect, drink, primary: true, IsHover("drink"), IconKind.Water);
+            var undo = Zone(new RectF(drinkRect.Right + 8f * f, drinkRect.Y, 28f * f, 28f * f), "undo");
+            Ui.IconButton(dc, theme, undo, IconKind.Undo, IsHover("undo"), 0.58f, _service.CanUndo ? theme.Secondary : theme.Tertiary);
+            if (total > 0)
+            {
+                var reset = Zone(new RectF(undo.Right + 2f * f, drinkRect.Y, 28f * f, 28f * f), "reset");
+                Ui.IconButton(dc, theme, reset, IconKind.Restart, IsHover("reset"), 0.58f, theme.Secondary);
+            }
+        }
 
         DrawChart(dc, theme, new RectF(w - chartW, 4f * f, chartW, h - 8f * f));
     }

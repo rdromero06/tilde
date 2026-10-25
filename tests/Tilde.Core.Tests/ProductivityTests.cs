@@ -123,6 +123,21 @@ public class WaterTrackerTests
     }
 
     [Fact]
+    public void Reiniciar_el_dia_borra_todo_y_se_puede_restaurar()
+    {
+        var w = new WaterTracker(new WaterData());
+        w.Drink(At(10), 250);
+        w.Drink(At(12), 500);
+        var day = DateOnly.FromDateTime(At(0));
+        var removed = w.ResetDay(day);
+        Assert.Equal(0, w.TotalOn(day));
+        Assert.Equal(2, removed.Count);
+        w.Restore(removed);
+        Assert.Equal(750, w.TotalOn(day));
+        Assert.Empty(w.ResetDay(day.AddDays(1)));
+    }
+
+    [Fact]
     public void Aviso_una_hora_despues_del_ultimo_trago()
     {
         var w = new WaterTracker(new WaterData());

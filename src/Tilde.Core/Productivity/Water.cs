@@ -69,6 +69,31 @@ public sealed class WaterTracker(WaterData data)
         return false;
     }
 
+    /// <summary>Borra todo lo registrado en un día y devuelve lo borrado (para poder deshacerlo).</summary>
+    public IReadOnlyList<WaterEntry> ResetDay(DateOnly day)
+    {
+        if (Data.Days.Remove(Key(day), out var removed))
+        {
+            return removed;
+        }
+        return [];
+    }
+
+    /// <summary>Vuelve a poner unos tragos borrados con <see cref="ResetDay"/>.</summary>
+    public void Restore(IReadOnlyList<WaterEntry> entries)
+    {
+        foreach (var e in entries)
+        {
+            var key = Key(DateOnly.FromDateTime(e.At.LocalDateTime));
+            if (!Data.Days.TryGetValue(key, out var list))
+            {
+                Data.Days[key] = list = [];
+            }
+            list.Add(e);
+            list.Sort((a, b) => a.At.CompareTo(b.At));
+        }
+    }
+
     /// <summary>Borra los días más antiguos que <see cref="KeepDays"/>.</summary>
     public void Prune(DateOnly today)
     {

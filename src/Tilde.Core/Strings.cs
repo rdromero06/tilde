@@ -61,6 +61,7 @@ public static class Strings
     public static string WaterReminderTitle => T("Hora de beber agua", "Time to drink water");
     public static string WaterReminderMessage(string drunk, string goal) => T($"Llevas {drunk} de {goal} hoy", $"{drunk} of {goal} so far today");
     public static string Later => T("Luego", "Later");
+    public static string WaterResetConfirm => T("¿Poner a cero?", "Reset today?");
     public static string DecimalSeparator => T(",", ".");
 
     // Tareas

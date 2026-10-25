@@ -116,6 +116,16 @@ internal sealed unsafe partial class NotchWindow : Win32Window
             _demoStep = 200;
             SetTimer(Handle, TimerDemo, 3000, 0);
         }
+        else if (Environment.GetEnvironmentVariable("TILDE_DEBUG_DEMO") == "reset")
+        {
+            // Abre Agua y pulsa «poner a cero» (el segundo clic llega a los 3 s).
+            Expand();
+            int water = _pages.ToList().FindIndex(p => p is WaterPage);
+            GoToPage(water);
+            ((CanvasPage)_pages[water]).DebugActivate("reset");
+            _demoStep = 300;
+            SetTimer(Handle, TimerDemo, 3000, 0);
+        }
         else if (Environment.GetEnvironmentVariable("TILDE_DEBUG_DEMO") == "1")
         {
             SetTimer(Handle, TimerDemo, 1000, 0);
@@ -581,6 +591,10 @@ internal sealed unsafe partial class NotchWindow : Win32Window
             case 3: Render(() => _view?.SetBarHover(false)); break;
             case 4: GoToPage(_page - 1); break;
             case 5: Collapse(); break;
+            case 300:
+                ((CanvasPage)_pages[_page]).DebugActivate("reset-confirm");
+                KillTimer(Handle, TimerDemo);
+                break;
             case 200:
                 _textInput?.DebugSubmit("Comprar pan en 30 min");
                 KillTimer(Handle, TimerDemo);

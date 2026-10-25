@@ -175,6 +175,7 @@ internal sealed class WaterService : IDisposable
     private readonly JsonStore<WaterData> _store;
     private readonly UiTimer _reminderTimer;
     private readonly UiTimer _midnightTimer;
+    private IReadOnlyList<WaterEntry>? _lastReset;
 
     public WaterService(SettingsStore settings, AlertCenter alerts)
     {
@@ -204,18 +205,39 @@ internal sealed class WaterService : IDisposable
 
     public void Drink()
     {
+        _lastReset = null;
         Tracker.Drink(DateTimeOffset.Now, Settings.GlassMl);
         _alerts.Remove("water");
         Save();
     }
 
+    /// <summary>Deshace el último trago o, si lo último fue un reinicio, lo revierte.</summary>
     public void Undo()
     {
-        if (Tracker.UndoLast(Today))
+        if (_lastReset is { Count: > 0 } reset)
+        {
+            Tracker.Restore(reset);
+            _lastReset = null;
+            Save();
+        }
+        else if (Tracker.UndoLast(Today))
         {
             Save();
         }
     }
+
+    /// <summary>Pone a cero el día de hoy (se puede deshacer con «Deshacer»).</summary>
+    public void ResetToday()
+    {
+        var removed = Tracker.ResetDay(Today);
+        if (removed.Count > 0)
+        {
+            _lastReset = removed;
+            Save();
+        }
+    }
+
+    public bool CanUndo => _lastReset is { Count: > 0 } || TodayTotal > 0;
 
     /// <summary>Cambia al siguiente tamaño de vaso o botella.</summary>
     public void CycleGlass() => _settings.Update(s => s.Water.GlassMl = NextOf(GlassSizes, s.Water.GlassMl));
@@ -263,6 +285,7 @@ internal sealed class WaterService : IDisposable
 
     private void OnMidnight()
     {
+        _lastReset = null;
         Tracker.Prune(Today);
         Schedule();
         Changed?.Invoke();

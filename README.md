@@ -96,7 +96,9 @@ El instalador por usuario (sin permisos de administrador) llega en la fase 7. Ha
 ### Agua
 
 - Vaso que se llena, total del día frente a la meta, botón **Beber** (+ tamaño del vaso),
-  **deshacer** y **gráfico por horas**. «Vaso» y «Meta» se cambian con un clic.
+  **deshacer**, **poner a cero** y **gráfico por horas**. «Vaso» y «Meta» se cambian con un clic.
+- **Poner a cero** borra lo registrado hoy en dos pasos (pide confirmación durante unos
+  segundos) y se puede revertir con **deshacer**.
 - Avisos dentro del horario configurado cuando llevas un rato sin beber; se paran al cumplir la
   meta. El aviso permite beber directamente.
 
